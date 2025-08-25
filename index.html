@@ -1,180 +1,315 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Assistant Scolaire</title>
-<style>
-body{
-  margin:0;font-family:Arial,sans-serif;
-  background:url('https://img.freepik.com/vecteurs-libre/fond-bulles-eau-brillante-fond-bleu_1017-26353.jpg') no-repeat center center fixed;
-  background-size:cover;color:#fff;
+import 'package:flutter/material.dart';
+
+void main() => runApp(AssistanceScolaireApp());
+
+class AssistanceScolaireApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Assistance Scolaire',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: HomeScreen(),
+    );
+  }
 }
-header{padding:1rem;background:rgba(0,0,0,0.5);text-align:center;font-size:1.5rem;font-weight:bold;}
-nav{display:flex;flex-wrap:wrap;justify-content:space-around;padding:0.5rem;background:rgba(0,0,0,0.4);}
-nav button{flex:1 1 30%;margin:0.5rem;padding:0.8rem;font-size:1rem;border:none;border-radius:8px;background:#1e90ff;color:#fff;}
-section{padding:1rem;display:none;background:rgba(0,0,0,0.4);min-height:80vh;}
-h2{text-align:center;}
-button.action-btn{padding:0.5rem 1rem;margin:0.3rem;border:none;border-radius:6px;background:#32cd32;color:#fff;}
-ul{list-style:none;padding:0;}
-li{background:rgba(255,255,255,0.1);margin:0.5rem 0;padding:0.5rem;border-radius:5px;cursor:pointer;}
 
-/* Flashcards */
-.flashcard-wrap{position:relative;width:90%;max-width:460px;margin:1rem auto;}
-.flashcard{
-  background:rgba(255,255,255,0.12);
-  backdrop-filter: blur(2px);
-  border-radius:12px;
-  min-height:140px;
-  display:flex;align-items:center;justify-content:center;
-  padding:1rem;text-align:center;font-size:1.1rem;
-  user-select:none;touch-action:none;
-  transition:transform .2s ease, opacity .2s ease, box-shadow .2s ease;
-  box-shadow:0 8px 22px rgba(0,0,0,.25);
+// Écran principal
+class HomeScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Assistance Scolaire')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              child: Text('Quiz'),
+              onPressed: () => Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => SubjectScreen(isQuiz: true))),
+            ),
+            ElevatedButton(
+              child: Text('Flashcards'),
+              onPressed: () => Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => SubjectScreen(isQuiz: false))),
+            ),
+            ElevatedButton(
+              child: Text('Pomodoro'),
+              onPressed: () => Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => PomodoroScreen())),
+            ),
+            ElevatedButton(
+              child: Text('Tâches'),
+              onPressed: () => Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => TasksScreen())),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
-.flashcard.dragging{transition:none;box-shadow:0 12px 28px rgba(0,0,0,.35);}
-.hint{opacity:.85;text-align:center;font-size:.95rem;margin-top:.4rem}
-.badges{position:absolute;inset:0;pointer-events:none;display:flex;justify-content:space-between;align-items:center;padding:0 10px;}
-.badge{font-size:1.2rem;font-weight:bold;padding:.3rem .5rem;border-radius:8px;opacity:.0;transition:opacity .15s ease;}
-.badge.good{background:rgba(50,205,50,.8);}
-.badge.bad{background:rgba(255,77,77,.8);}
 
-/* Quiz */
-.option-btn{display:block;width:100%;max-width:480px;margin:.4rem auto;padding:.6rem;border:none;border-radius:8px;background:#1e90ff;color:#fff;}
-.row{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center}
-.muted{opacity:.85;text-align:center}
-</style>
-</head>
-<body>
-<header>Assistant Scolaire</header>
-<nav>
-  <button onclick="showSection('quizHome')">Quiz</button>
-  <button onclick="showSection('flashHome')">Flashcards</button>
-  <button onclick="showSection('pomodoroSection')">Pomodoro</button>
-  <button onclick="showSection('tasksSection')">Tâches</button>
-</nav>
+// Sélection de matière
+class SubjectScreen extends StatelessWidget {
+  final bool isQuiz;
+  SubjectScreen({required this.isQuiz});
 
-<!-- QUIZ -->
-<section id="quizHome">
-  <h2>Quiz • Choisis la matière</h2>
-  <div id="quizSubjects" class="row"></div>
-</section>
-<section id="quizListSection">
-  <h2 id="quizListTitle"></h2>
-  <button class="action-btn" onclick="createQuiz()">Créer nouveau quiz</button>
-  <ul id="quizList"></ul>
-  <button class="action-btn" onclick="showSection('quizHome')">Retour</button>
-</section>
-<section id="quizCreateSection">
-  <h2>Créer un Quiz</h2>
-  <input type="text" id="quizTitle" placeholder="Titre du quiz">
-  <div id="quizQuestionsContainer"></div>
-  <button class="action-btn" onclick="addQuestion()">Ajouter une question</button>
-  <button class="action-btn" onclick="saveQuiz()">Sauvegarder</button>
-  <button class="action-btn" onclick="showQuizList()">Annuler</button>
-</section>
-<section id="quizPlaySection">
-  <h2 id="quizPlayTitle"></h2>
-  <div id="quizQuestionContainer"></div>
-  <div class="row">
-    <button id="nextBtn" class="action-btn" onclick="nextQuestion()" disabled>Suivant</button>
-    <button class="action-btn" onclick="showQuizList()">Quitter</button>
-  </div>
-  <p id="quizFeedback" class="muted"></p>
-  <p id="quizScore"></p>
-  <div id="quizEndActions" class="row" style="display:none;">
-    <button class="action-btn" onclick="restartQuizAll()">Recommencer tout</button>
-    <button id="quizRetryWrongBtn" class="action-btn" onclick="restartQuizWrong()">Rejouer les mauvaises</button>
-  </div>
-</section>
+  final List<String> subjects = ['Math', 'Français', 'Anglais', 'Science'];
 
-<!-- FLASHCARDS -->
-<section id="flashHome">
-  <h2>Flashcards • Choisis la matière</h2>
-  <div id="flashSubjects" class="row"></div>
-</section>
-<section id="flashListSection">
-  <h2 id="flashListTitle"></h2>
-  <button class="action-btn" onclick="createFlash()">Créer nouveau jeu</button>
-  <ul id="flashList"></ul>
-  <button class="action-btn" onclick="showSection('flashHome')">Retour</button>
-</section>
-<section id="flashCreateSection">
-  <h2>Créer un jeu de Flashcards</h2>
-  <input type="text" id="flashTitle" placeholder="Titre du jeu">
-  <div class="row">
-    <button class="action-btn" onclick="addFlashcard()">Ajouter une carte</button>
-    <button class="action-btn" onclick="saveFlash()">Sauvegarder</button>
-    <button class="action-btn" onclick="showFlashList()">Annuler</button>
-  </div>
-  <ul id="flashDraftList"></ul>
-</section>
-<section id="flashPlaySection">
-  <h2 id="flashPlayTitle"></h2>
-  <div class="flashcard-wrap">
-    <div id="flashCard" class="flashcard"></div>
-    <div class="badges">
-      <div id="badgeBad" class="badge bad">❌ Mauvais</div>
-      <div id="badgeGood" class="badge good">✅ Bon</div>
-    </div>
-  </div>
-  <p class="hint">Glisse ↔️ : droite = bon, gauche = mauvais • Tape pour retourner</p>
-  <div class="row">
-    <button class="action-btn" onclick="quitFlash()">Quitter</button>
-  </div>
-  <p id="flashProgress" class="muted" style="margin-top:.5rem;"></p>
-  <div id="flashEndActions" class="row" style="display:none;">
-    <button class="action-btn" onclick="restartAll()">Recommencer tout</button>
-    <button class="action-btn" id="retryWrongBtn" onclick="restartWrong()">Rejouer les ratées</button>
-  </div>
-</section>
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(isQuiz ? 'Choisir Matière - Quiz' : 'Choisir Matière - Flashcards')),
+      body: ListView.builder(
+        itemCount: subjects.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            title: Text(subjects[index]),
+            onTap: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => CardScreen(subject: subjects[index], isQuiz: isQuiz)));
+            },
+          );
+        },
+      ),
+    );
+  }
+}
 
-<!-- POMODORO -->
-<section id="pomodoroSection">
-  <h2>Pomodoro</h2>
-  <label>Temps travail (min) <input type="number" id="workTime" value="25"></label><br>
-  <label>Temps pause (min) <input type="number" id="breakTime" value="5"></label><br>
-  <button class="action-btn" onclick="startPomodoro()">Démarrer</button>
-  <p id="timerDisplay"></p>
-</section>
+// Écran des cartes / quiz avec swipe
+class CardScreen extends StatefulWidget {
+  final String subject;
+  final bool isQuiz;
+  CardScreen({required this.subject, required this.isQuiz});
 
-<!-- TÂCHES -->
-<section id="tasksSection">
-  <h2>Tâches</h2>
-  <input type="text" id="taskInput" placeholder="Nouvelle tâche">
-  <button class="action-btn" onclick="addTask()">Ajouter</button>
-  <ul id="taskList"></ul>
-</section>
+  @override
+  _CardScreenState createState() => _CardScreenState();
+}
 
-<script>
-/* ========= Helpers ========= */
-function showSection(id){document.querySelectorAll('section').forEach(sec=>sec.style.display='none');document.getElementById(id).style.display='block';}
-const subjects=['Français','Maths','Sciences','Histoire','Anglais','Technologie'];
-function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+class _CardScreenState extends State<CardScreen> {
+  List<String> cards = [];
+  int currentIndex = 0;
 
-/* ====== QUIZ ====== */
-let currentSubject='',currentQuizList=[],quizDeck=[],quizIndex=0,quizScore=0,quizAnswered=false,quizWrongIndices=[],quizOriginalDeck=[];
-const quizSubjectsDiv=document.getElementById('quizSubjects');
-subjects.forEach(sub=>{const btn=document.createElement('button'); btn.innerText=sub; btn.className='action-btn'; btn.onclick=()=>{currentSubject=sub; showQuizList();}; quizSubjectsDiv.appendChild(btn);});
+  @override
+  void initState() {
+    super.initState();
+    // Exemple de cartes/questions
+    cards = List.generate(10, (i) => '${widget.subject} Question ${i + 1}');
+  }
 
-/* ====== FLASHCARDS ====== */
-let currentFlashSubject='',currentFlashList=[],currentFlash=[],currentFlashIndex=0;
-let wrongIndices=[], correctCount=0, initialDeck=[];
-const flashSubjectsDiv=document.getElementById('flashSubjects');
-subjects.forEach(sub=>{const btn=document.createElement('button'); btn.innerText=sub; btn.className='action-btn'; btn.onclick=()=>{currentFlashSubject=sub;showFlashList();}; flashSubjectsDiv.appendChild(btn);});
+  void swipeRight() {
+    // Bon
+    nextCard();
+  }
 
-/* ====== TÂCHES ====== */
-const taskListEl=document.getElementById('taskList'); let tasks=JSON.parse(localStorage.getItem('tasks'))||[];
-function displayTasks(){taskListEl.innerHTML='';tasks.forEach((t,i)=>{const li=document.createElement('li'); li.innerText=t; li.onclick=()=>{ if(confirm('Supprimer cette tâche ?')){ tasks.splice(i,1); localStorage.setItem('tasks',JSON.stringify(tasks)); displayTasks(); } }; taskListEl.appendChild(li);});}
-function addTask(){const val=document.getElementById('taskInput').value.trim();if(val){tasks.push(val); localStorage.setItem('tasks',JSON.stringify(tasks)); document.getElementById('taskInput').value=''; displayTasks();}}
-displayTasks();
+  void swipeLeft() {
+    // Pas bon
+    nextCard();
+  }
 
-/* ====== POMODORO ====== */
-let pomodoroTimer,work=false;
-function startPomodoro(){const workMin=parseInt(document.getElementById('workTime').value)||25; const breakMin=parseInt(document.getElementById('breakTime').value)||5; let time=workMin*60; work=true; clearInterval(pomodoroTimer); pomodoroTimer=setInterval(()=>{if(time<=0){ work=!work; time=(work?workMin*60:breakMin*60); } const m=Math.floor(time/60), s=time%60; document.getElementById('timerDisplay').innerText=(work?'Travail':'Pause')+` ${m}:${s<10?'0'+s:s}`; time--; },1000);}
+  void nextCard() {
+    if (currentIndex < cards.length - 1) {
+      setState(() {
+        currentIndex++;
+      });
+    } else {
+      // Fin des cartes
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text('Terminé !'),
+          content: Text('Vous avez terminé toutes les cartes de ${widget.subject}.'),
+          actions: [
+            TextButton(
+              child: Text('OK'),
+              onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
+            ),
+          ],
+        ),
+      );
+    }
+  }
 
-/* ====== INIT ====== */
-showSection('quizHome');
-</script>
-</body>
-</html>
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('${widget.subject} - ${widget.isQuiz ? 'Quiz' : 'Flashcards'}')),
+      body: Center(
+        child: GestureDetector(
+          onPanEnd: (details) {
+            if (details.velocity.pixelsPerSecond.dx > 0) {
+              swipeRight();
+            } else {
+              swipeLeft();
+            }
+          },
+          child: Card(
+            margin: EdgeInsets.all(20),
+            child: Container(
+              height: 300,
+              alignment: Alignment.center,
+              child: Text(cards[currentIndex], style: TextStyle(fontSize: 24)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Pomodoro
+class PomodoroScreen extends StatefulWidget {
+  @override
+  _PomodoroScreenState createState() => _PomodoroScreenState();
+}
+
+class _PomodoroScreenState extends State<PomodoroScreen> {
+  int minutes = 25;
+  int seconds = 0;
+  bool isRunning = false;
+  late Ticker _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Ticker((_) {
+      if (isRunning) {
+        setState(() {
+          if (seconds == 0) {
+            if (minutes == 0) {
+              isRunning = false;
+            } else {
+              minutes--;
+              seconds = 59;
+            }
+          } else {
+            seconds--;
+          }
+        });
+      }
+    });
+    _ticker.start();
+  }
+
+  @override
+  void dispose() {
+    _ticker.stop();
+    super.dispose();
+  }
+
+  void startPause() {
+    setState(() {
+      isRunning = !isRunning;
+    });
+  }
+
+  void reset() {
+    setState(() {
+      minutes = 25;
+      seconds = 0;
+      isRunning = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Pomodoro')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}', style: TextStyle(fontSize: 60)),
+            SizedBox(height: 20),
+            ElevatedButton(onPressed: startPause, child: Text(isRunning ? 'Pause' : 'Démarrer')),
+            ElevatedButton(onPressed: reset, child: Text('Réinitialiser')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Tâches
+class TasksScreen extends StatefulWidget {
+  @override
+  _TasksScreenState createState() => _TasksScreenState();
+}
+
+class _TasksScreenState extends State<TasksScreen> {
+  List<String> tasks = [];
+  TextEditingController controller = TextEditingController();
+
+  void addTask(String task) {
+    setState(() {
+      tasks.add(task);
+    });
+    controller.clear();
+  }
+
+  void removeTask(int index) {
+    setState(() {
+      tasks.removeAt(index);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Tâches')),
+      body: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.all(8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(controller: controller, decoration: InputDecoration(labelText: 'Nouvelle tâche')),
+                ),
+                IconButton(icon: Icon(Icons.add), onPressed: () => addTask(controller.text))
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: tasks.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(tasks[index]),
+                  trailing: IconButton(icon: Icon(Icons.delete), onPressed: () => removeTask(index)),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Simple ticker pour Pomodoro
+class Ticker {
+  final void Function(Duration) onTick;
+  late final Stopwatch _stopwatch;
+  late final Duration _interval;
+  bool _running = false;
+
+  Ticker(this.onTick) {
+    _stopwatch = Stopwatch();
+    _interval = Duration(seconds: 1);
+    _tick();
+  }
+
+  void _tick() async {
+    while (true) {
+      await Future.delayed(_interval);
+      if (_running) onTick(Duration(seconds: 1));
+    }
+  }
+
+  void start() => _running = true;
+  void stop() => _running = false;
+}
