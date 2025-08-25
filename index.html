@@ -436,6 +436,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   int minutes = 25;
   int seconds = 0;
   bool running = false;
+
   @override
   void initState() {
     super.initState();
@@ -458,28 +459,43 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
     prefs.setBool('pomodoro_running', running);
   }
 
-  void toggleTimer() => setState(() => running = !running);
-  void resetTimer() => setState(() {
+  void startPause() => setState(() => running = !running);
+  void reset() => setState(() {
         minutes = 25;
         seconds = 0;
         running = false;
         savePomodoro();
       });
 
+  void tick() {
+    if (!running) return;
+    setState(() {
+      if (seconds == 0) {
+        if (minutes == 0) {
+          running = false;
+        } else {
+          minutes--;
+          seconds = 59;
+        }
+      } else {
+        seconds--;
+      }
+      savePomodoro();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    String minStr = minutes.toString().padLeft(2, '0');
-    String secStr = seconds.toString().padLeft(2, '0');
     return Scaffold(
       appBar: AppBar(title: Text('Pomodoro')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('$minStr:$secStr', style: TextStyle(fontSize: 48)),
+            Text('${minutes.toString().padLeft(2,'0')}:${seconds.toString().padLeft(2,'0')}', style: TextStyle(fontSize: 60)),
             SizedBox(height: 20),
-            ElevatedButton(onPressed: toggleTimer, child: Text(running ? 'Pause' : 'Démarrer')),
-            ElevatedButton(onPressed: resetTimer, child: Text('Réinitialiser')),
+            ElevatedButton(onPressed: startPause, child: Text(running ? 'Pause' : 'Démarrer')),
+            ElevatedButton(onPressed: reset, child: Text('Réinitialiser')),
           ],
         ),
       ),
@@ -507,9 +523,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
   void loadTasks() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      tasks = prefs.getStringList('tasks') ?? [];
-    });
+    setState(() => tasks = prefs.getStringList('tasks') ?? []);
   }
 
   void saveTasks() async {
@@ -545,13 +559,14 @@ class _TasksScreenState extends State<TasksScreen> {
             ),
           ),
           Expanded(
-              child: ListView.builder(
-            itemCount: tasks.length,
-            itemBuilder: (context, index) => ListTile(
-              title: Text(tasks[index]),
-              trailing: IconButton(icon: Icon(Icons.delete), onPressed: () => removeTask(index)),
+            child: ListView.builder(
+              itemCount: tasks.length,
+              itemBuilder: (context, index) => ListTile(
+                title: Text(tasks[index]),
+                trailing: IconButton(icon: Icon(Icons.delete), onPressed: () => removeTask(index)),
+              ),
             ),
-          ))
+          ),
         ],
       ),
     );
