@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -120,7 +119,8 @@ class _EnsembleListScreenState extends State<EnsembleListScreen> {
   void loadEnsembles() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      ensembles = prefs.getStringList('${widget.subject}_${widget.isQuiz ? "quiz" : "flash"}') ?? [];
+      ensembles =
+          prefs.getStringList('${widget.subject}_${widget.isQuiz ? "quiz" : "flash"}') ?? [];
     });
   }
 
@@ -230,7 +230,8 @@ class CardPlayScreen extends StatefulWidget {
   final String subject;
   final String ensemble;
   final bool isQuiz;
-  CardPlayScreen({required this.subject, required this.ensemble, required this.isQuiz});
+  CardPlayScreen(
+      {required this.subject, required this.ensemble, required this.isQuiz});
 
   @override
   _CardPlayScreenState createState() => _CardPlayScreenState();
@@ -238,9 +239,8 @@ class CardPlayScreen extends StatefulWidget {
 
 class _CardPlayScreenState extends State<CardPlayScreen> {
   List<Map<String, dynamic>> cards = [];
+  Set<int> doneCards = {};
   int currentIndex = 0;
-  Map<int, bool> results = {};
-  bool finished = false;
 
   @override
   void initState() {
@@ -250,177 +250,90 @@ class _CardPlayScreenState extends State<CardPlayScreen> {
 
   void loadCards() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String>? raw = prefs.getStringList('${widget.subject}_${widget.ensemble}');
-    if (raw != null) {
-      setState(() {
-        cards = raw.map((e) => Map<String, dynamic>.from(jsonDecode(e))).toList();
-      });
-    }
+    List<String> savedCards =
+        prefs.getStringList('${widget.subject}_${widget.ensemble}') ?? [];
+    setState(() {
+      cards = savedCards
+          .map((e) => Map<String, dynamic>.from(jsonDecode(e)))
+          .toList();
+      doneCards =
+          (prefs.getStringList('${widget.subject}_${widget.ensemble}_done') ??
+                  [])
+              .map((e) => int.parse(e))
+              .toSet();
+    });
   }
 
   void saveCards() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setStringList('${widget.subject}_${widget.ensemble}',
         cards.map((e) => jsonEncode(e)).toList());
+    prefs.setStringList('${widget.subject}_${widget.ensemble}_done',
+        doneCards.map((e) => e.toString()).toList());
   }
 
-  void markCard(bool correct) {
-    results[currentIndex] = correct;
+  void swipeRight() {
+    doneCards.add(currentIndex);
+    saveCards();
     nextCard();
   }
+
+  void swipeLeft() => nextCard();
 
   void nextCard() {
     if (currentIndex < cards.length - 1) {
       setState(() => currentIndex++);
     } else {
-      setState(() => finished = true);
+      showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+                title: Text('Terminé !'),
+                content: Text(
+                    'Vous avez terminé toutes les cartes de ${widget.ensemble}.'),
+                actions: [
+                  TextButton(
+                      onPressed: () =>
+                          Navigator.popUntil(context, (route) => route.isFirst),
+                      child: Text('OK'))
+                ],
+              ));
     }
-  }
-
-  void restartErrors() {
-    List<Map<String, dynamic>> newCards = [];
-    for (var entry in results.entries) {
-      if (!entry.value) newCards.add(cards[entry.key]);
-    }
-    setState(() {
-      cards = newCards..shuffle();
-      results = {};
-      currentIndex = 0;
-      finished = false;
-    });
-  }
-
-  void restartAll() {
-    setState(() {
-      cards.shuffle();
-      results = {};
-      currentIndex = 0;
-      finished = false;
-    });
-  }
-
-  void addCard() async {
-    TextEditingController questionCtrl = TextEditingController();
-    List<TextEditingController> choiceCtrls =
-        List.generate(4, (_) => TextEditingController());
-    await showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-              title: Text(widget.isQuiz ? 'Nouvelle question' : 'Nouvelle carte'),
-              content: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    TextField(controller: questionCtrl, decoration: InputDecoration(labelText: 'Question / Carte')),
-                    if (widget.isQuiz)
-                      ...List.generate(4, (i) => TextField(controller: choiceCtrls[i], decoration: InputDecoration(labelText: 'Choix ${i+1}'))),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: Text('Annuler')),
-                TextButton(
-                    onPressed: () {
-                      Map<String, dynamic> card = {'question': questionCtrl.text};
-                      if (widget.isQuiz) {
-                        List<String> choix = [];
-                        for (var c in choiceCtrls) if (c.text.trim().isNotEmpty) choix.add(c.text.trim());
-                        card['choix'] = choix;
-                        card['bonneReponse'] = choix.isNotEmpty ? choix[0] : '';
-                      }
-                      setState(() {
-                        cards.add(card);
-                        saveCards();
-                      });
-                      Navigator.pop(context);
-                    },
-                    child: Text('Ajouter')),
-              ],
-            ));
   }
 
   @override
   Widget build(BuildContext context) {
     if (cards.isEmpty) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.ensemble),
-          actions: [IconButton(icon: Icon(Icons.add), onPressed: addCard)],
-        ),
-        body: Center(child: Text('Aucune carte ou question')),
+        appBar: AppBar(title: Text(widget.ensemble)),
+        body: Center(child: Text('Aucune carte pour cet ensemble')),
       );
     }
 
-    if (finished) {
-      int score = results.values.where((v) => v).length;
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.ensemble),
-          actions: [IconButton(icon: Icon(Icons.add), onPressed: addCard)],
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('Score : $score / ${cards.length}', style: TextStyle(fontSize: 24)),
-              SizedBox(height: 20),
-              ElevatedButton(onPressed: restartErrors, child: Text('Recommencer les erreurs')),
-              ElevatedButton(onPressed: restartAll, child: Text('Tout recommencer')),
-            ],
-          ),
-        ),
-      );
-    }
-
-    var card = cards[currentIndex];
-
-    if (widget.isQuiz) {
-      List<String> choices = List<String>.from(card['choix'] ?? []);
-      choices.shuffle(Random());
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.ensemble),
-          actions: [IconButton(icon: Icon(Icons.add), onPressed: addCard)],
-        ),
-        body: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Text(card['question'], style: TextStyle(fontSize: 24)),
-              SizedBox(height: 20),
-              ...choices.map((c) => ElevatedButton(
-                  onPressed: () => markCard(c == card['bonneReponse']), child: Text(c))),
-            ],
-          ),
-        ),
-      );
-    } else {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.ensemble),
-          actions: [IconButton(icon: Icon(Icons.add), onPressed: addCard)],
-        ),
-        body: GestureDetector(
+    Map<String, dynamic> currentCard = cards[currentIndex];
+    return Scaffold(
+      appBar: AppBar(title: Text('${widget.ensemble}')),
+      body: Center(
+        child: GestureDetector(
           onPanEnd: (details) {
             if (details.velocity.pixelsPerSecond.dx > 0) {
-              markCard(true);
+              swipeRight();
             } else {
-              markCard(false);
+              swipeLeft();
             }
           },
-          child: Center(
-            child: Card(
-              margin: EdgeInsets.all(20),
-              color: results[currentIndex] == true ? Colors.green[100] : Colors.white,
-              child: Container(
-                height: 300,
-                alignment: Alignment.center,
-                child: Text(card['question'], style: TextStyle(fontSize: 24)),
-              ),
+          child: Card(
+            margin: EdgeInsets.all(20),
+            color: doneCards.contains(currentIndex) ? Colors.green[100] : Colors.white,
+            child: Container(
+              height: 300,
+              alignment: Alignment.center,
+              child: Text(currentCard['question'] ?? 'Pas de question',
+                  style: TextStyle(fontSize: 24)),
             ),
           ),
         ),
-      );
-    }
+      ),
+    );
   }
 }
 
@@ -441,6 +354,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   void initState() {
     super.initState();
     loadPomodoro();
+    Future.delayed(Duration.zero, tick);
   }
 
   void loadPomodoro() async {
@@ -467,21 +381,24 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
         savePomodoro();
       });
 
-  void tick() {
-    if (!running) return;
-    setState(() {
-      if (seconds == 0) {
-        if (minutes == 0) {
-          running = false;
+  void tick() async {
+    while (true) {
+      await Future.delayed(Duration(seconds: 1));
+      if (!running) continue;
+      setState(() {
+        if (seconds == 0) {
+          if (minutes == 0) {
+            running = false;
+          } else {
+            minutes--;
+            seconds = 59;
+          }
         } else {
-          minutes--;
-          seconds = 59;
+          seconds--;
         }
-      } else {
-        seconds--;
-      }
-      savePomodoro();
-    });
+        savePomodoro();
+      });
+    }
   }
 
   @override
@@ -492,7 +409,8 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('${minutes.toString().padLeft(2,'0')}:${seconds.toString().padLeft(2,'0')}', style: TextStyle(fontSize: 60)),
+            Text('${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                style: TextStyle(fontSize: 60)),
             SizedBox(height: 20),
             ElevatedButton(onPressed: startPause, child: Text(running ? 'Pause' : 'Démarrer')),
             ElevatedButton(onPressed: reset, child: Text('Réinitialiser')),
@@ -553,7 +471,8 @@ class _TasksScreenState extends State<TasksScreen> {
             padding: EdgeInsets.all(8),
             child: Row(
               children: [
-                Expanded(child: TextField(controller: controller, decoration: InputDecoration(labelText: 'Nouvelle tâche'))),
+                Expanded(
+                    child: TextField(controller: controller, decoration: InputDecoration(labelText: 'Nouvelle tâche'))),
                 IconButton(icon: Icon(Icons.add), onPressed: () => addTask(controller.text)),
               ],
             ),
