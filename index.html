@@ -303,7 +303,6 @@ class _CardPlayScreenState extends State<CardPlayScreen> {
     TextEditingController questionCtrl = TextEditingController();
     List<TextEditingController> choiceCtrls =
         List.generate(4, (_) => TextEditingController());
-    int correctIndex = 0;
     await showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -437,18 +436,35 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   int minutes = 25;
   int seconds = 0;
   bool running = false;
-
-  void toggleTimer() {
-    setState(() => running = !running);
+  @override
+  void initState() {
+    super.initState();
+    loadPomodoro();
   }
 
-  void resetTimer() {
+  void loadPomodoro() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      minutes = 25;
-      seconds = 0;
-      running = false;
+      minutes = prefs.getInt('pomodoro_minutes') ?? 25;
+      seconds = prefs.getInt('pomodoro_seconds') ?? 0;
+      running = prefs.getBool('pomodoro_running') ?? false;
     });
   }
+
+  void savePomodoro() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setInt('pomodoro_minutes', minutes);
+    prefs.setInt('pomodoro_seconds', seconds);
+    prefs.setBool('pomodoro_running', running);
+  }
+
+  void toggleTimer() => setState(() => running = !running);
+  void resetTimer() => setState(() {
+        minutes = 25;
+        seconds = 0;
+        running = false;
+        savePomodoro();
+      });
 
   @override
   Widget build(BuildContext context) {
@@ -481,7 +497,7 @@ class TasksScreen extends StatefulWidget {
 
 class _TasksScreenState extends State<TasksScreen> {
   List<String> tasks = [];
-  TextEditingController ctrl = TextEditingController();
+  TextEditingController controller = TextEditingController();
 
   @override
   void initState() {
@@ -505,6 +521,7 @@ class _TasksScreenState extends State<TasksScreen> {
     if (t.trim().isEmpty) return;
     setState(() => tasks.add(t));
     saveTasks();
+    controller.clear();
   }
 
   void removeTask(int index) {
@@ -522,13 +539,8 @@ class _TasksScreenState extends State<TasksScreen> {
             padding: EdgeInsets.all(8),
             child: Row(
               children: [
-                Expanded(child: TextField(controller: ctrl)),
-                ElevatedButton(
-                    onPressed: () {
-                      addTask(ctrl.text);
-                      ctrl.clear();
-                    },
-                    child: Text('Ajouter'))
+                Expanded(child: TextField(controller: controller, decoration: InputDecoration(labelText: 'Nouvelle tâche'))),
+                IconButton(icon: Icon(Icons.add), onPressed: () => addTask(controller.text)),
               ],
             ),
           ),
@@ -537,9 +549,7 @@ class _TasksScreenState extends State<TasksScreen> {
             itemCount: tasks.length,
             itemBuilder: (context, index) => ListTile(
               title: Text(tasks[index]),
-              trailing: IconButton(
-                  icon: Icon(Icons.delete),
-                  onPressed: () => removeTask(index)),
+              trailing: IconButton(icon: Icon(Icons.delete), onPressed: () => removeTask(index)),
             ),
           ))
         ],
