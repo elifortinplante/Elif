@@ -66,6 +66,43 @@
     background: #32cd32;
     color: #fff;
   }
+  .flashcard {
+    width: 90%;
+    padding: 1rem;
+    margin: 0.5rem auto;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+    perspective: 1000px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .flipped {
+    transform: rotateY(180deg);
+  }
+  .flashcard-content {
+    position: absolute;
+    backface-visibility: hidden;
+  }
+  .flashcard .back {
+    transform: rotateY(180deg);
+  }
+  .quiz-options button {
+    display:block;
+    margin:0.3rem 0;
+    width:90%;
+    background:#1e90ff;
+    color:#fff;
+    border:none;
+    border-radius:5px;
+    padding:0.5rem;
+  }
+  .selected-task {
+    background: #ff4d4d !important;
+  }
 </style>
 </head>
 <body>
@@ -75,10 +112,9 @@
   <button onclick="showSection('flashcards')">Révisions</button>
   <button onclick="showSection('pomodoro')">Pomodoro</button>
   <button onclick="showSection('quiz')">Quiz</button>
-  <button onclick="showSection('dictionary')">Dictionnaire</button>
 </nav>
 
-<!-- DEVOIRS / TÂCHES -->
+<!-- DEVOIRS -->
 <section id="tasks">
   <h2>Devoirs</h2>
   <input type="text" id="taskInput" placeholder="Nouvelle tâche">
@@ -92,10 +128,11 @@
   </select>
   <input type="date" id="taskDate">
   <button class="action-btn" onclick="addTask()">Ajouter tâche</button>
+  <button class="action-btn" onclick="deleteSelectedTasks()">❌ Supprimer sélection</button>
   <div id="taskList"></div>
 </section>
 
-<!-- FLASHCARDS + QUIZ -->
+<!-- FLASHCARDS -->
 <section id="flashcards">
   <h2>Révisions / Flashcards</h2>
   <select id="flashSubject">
@@ -115,28 +152,29 @@
 <!-- POMODORO -->
 <section id="pomodoro">
   <h2>Pomodoro</h2>
-  <div>
-    <span id="timerDisplay">25:00</span><br>
-    <button class="action-btn" onclick="startPomodoro()">Démarrer</button>
-    <button class="action-btn" onclick="resetPomodoro()">Réinitialiser</button>
-  </div>
+  <label>Temps travail (min):</label><input type="number" id="workTime" value="25"><br>
+  <label>Temps pause (min):</label><input type="number" id="breakTime" value="5"><br>
+  <span id="timerDisplay">25:00</span><br>
+  <button class="action-btn" onclick="startPomodoro()">Démarrer</button>
+  <button class="action-btn" onclick="resetPomodoro()">Réinitialiser</button>
 </section>
 
-<!-- QUIZ SIMPLE -->
+<!-- QUIZ -->
 <section id="quiz">
   <h2>Quiz</h2>
   <input type="text" id="quizQuestion" placeholder="Question">
-  <input type="text" id="quizAnswer" placeholder="Réponse">
+  <input type="text" id="option1" placeholder="Option 1">
+  <input type="text" id="option2" placeholder="Option 2">
+  <input type="text" id="option3" placeholder="Option 3">
+  <input type="text" id="option4" placeholder="Option 4">
+  <select id="correctOption">
+    <option value="0">Option 1</option>
+    <option value="1">Option 2</option>
+    <option value="2">Option 3</option>
+    <option value="3">Option 4</option>
+  </select>
   <button class="action-btn" onclick="addQuiz()">Ajouter Question</button>
   <div id="quizList"></div>
-</section>
-
-<!-- DICTIONNAIRE -->
-<section id="dictionary">
-  <h2>Dictionnaire / Traduction</h2>
-  <input type="text" id="dictWord" placeholder="Mot à chercher">
-  <button class="action-btn" onclick="searchWord()">Chercher</button>
-  <div id="dictResult"></div>
 </section>
 
 <script>
@@ -153,7 +191,7 @@ function addTask(){
   const subject = document.getElementById('taskSubject').value;
   const date = document.getElementById('taskDate').value;
   if(task){
-    tasks.push({task, subject, date, done:false});
+    tasks.push({task, subject, date, selected:false});
     localStorage.setItem('tasks', JSON.stringify(tasks));
     document.getElementById('taskInput').value='';
     displayTasks();
@@ -165,12 +203,14 @@ function displayTasks(){
   tasks.forEach((t,i)=>{
     const div = document.createElement('div');
     div.className='task-item';
-    div.innerHTML=`<input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${i})"> ${t.task} [${t.subject}] - ${t.date}`;
+    if(t.selected) div.classList.add('selected-task');
+    div.innerHTML=`${t.task} [${t.subject}] - ${t.date}`;
+    div.onclick = ()=>{tasks[i].selected=!tasks[i].selected; localStorage.setItem('tasks', JSON.stringify(tasks)); displayTasks();}
     container.appendChild(div);
   });
 }
-function toggleTask(i){
-  tasks[i].done=!tasks[i].done;
+function deleteSelectedTasks(){
+  tasks = tasks.filter(t=>!t.selected);
   localStorage.setItem('tasks', JSON.stringify(tasks));
   displayTasks();
 }
@@ -196,7 +236,8 @@ function displayFlashcards(){
   flashcards.forEach((f,i)=>{
     const div = document.createElement('div');
     div.className='flashcard';
-    div.innerHTML=`<strong>${f.subject} :</strong> ${f.question} - ${f.answer}`;
+    div.innerHTML=`<div class="flashcard-content front">${f.question}</div><div class="flashcard-content back">${f.answer}</div>`;
+    div.onclick = ()=>{div.classList.toggle('flipped');};
     container.appendChild(div);
   });
 }
@@ -205,14 +246,25 @@ displayFlashcards();
 // POMODORO
 let pomodoroInterval;
 let pomodoroTime = 25*60;
+let breakTime = 5*60;
+let working = true;
 function startPomodoro(){
   clearInterval(pomodoroInterval);
+  const work = parseInt(document.getElementById('workTime').value)||25;
+  const pause = parseInt(document.getElementById('breakTime').value)||5;
+  pomodoroTime = work*60;
+  breakTime = pause*60;
+  working = true;
+  displayPomodoro();
   pomodoroInterval = setInterval(()=>{
-    if(pomodoroTime<=0){clearInterval(pomodoroInterval); alert("Temps écoulé !"); pomodoroTime=25*60; displayPomodoro();}
-    else{pomodoroTime--; displayPomodoro();}
+    if(pomodoroTime<=0){
+      if(working){pomodoroTime=breakTime; working=false; alert("Pause !");}
+      else{pomodoroTime=work*60; working=true; alert("Travail !");}
+    }else{pomodoroTime--;}
+    displayPomodoro();
   },1000);
 }
-function resetPomodoro(){clearInterval(pomodoroInterval); pomodoroTime=25*60; displayPomodoro();}
+function resetPomodoro(){clearInterval(pomodoroInterval); displayPomodoro();}
 function displayPomodoro(){ 
   const min = String(Math.floor(pomodoroTime/60)).padStart(2,'0');
   const sec = String(pomodoroTime%60).padStart(2,'0');
@@ -224,12 +276,21 @@ displayPomodoro();
 let quiz = JSON.parse(localStorage.getItem('quiz')) || [];
 function addQuiz(){
   const q = document.getElementById('quizQuestion').value;
-  const a = document.getElementById('quizAnswer').value;
-  if(q && a){
-    quiz.push({q,a});
+  const opts = [
+    document.getElementById('option1').value,
+    document.getElementById('option2').value,
+    document.getElementById('option3').value,
+    document.getElementById('option4').value
+  ];
+  const correct = parseInt(document.getElementById('correctOption').value);
+  if(q && opts.every(o=>o!=="")){
+    quiz.push({q, opts, correct});
     localStorage.setItem('quiz', JSON.stringify(quiz));
     document.getElementById('quizQuestion').value='';
-    document.getElementById('quizAnswer').value='';
+    document.getElementById('option1').value='';
+    document.getElementById('option2').value='';
+    document.getElementById('option3').value='';
+    document.getElementById('option4').value='';
     displayQuiz();
   }
 }
@@ -239,19 +300,19 @@ function displayQuiz(){
   quiz.forEach((q,i)=>{
     const div = document.createElement('div');
     div.className='quiz-question';
-    div.innerHTML=`Q: ${q.q} - R: ${q.a}`;
+    div.innerHTML=`<strong>${q.q}</strong>`;
+    const optsDiv = document.createElement('div'); optsDiv.className='quiz-options';
+    q.opts.forEach((opt,j)=>{
+      const btn = document.createElement('button');
+      btn.innerText = opt;
+      btn.onclick = ()=>{alert(j===q.correct ? "Bonne réponse !" : "Mauvaise réponse !");};
+      optsDiv.appendChild(btn);
+    });
+    div.appendChild(optsDiv);
     container.appendChild(div);
   });
 }
 displayQuiz();
-
-// DICTIONNAIRE SIMPLIFIÉ
-function searchWord(){
-  const word = document.getElementById('dictWord').value;
-  if(word){
-    document.getElementById('dictResult').innerText = `Résultat simulé pour "${word}" (intégrer API réelle pour plus tard)`;
-  }
-}
 </script>
 </body>
 </html>
