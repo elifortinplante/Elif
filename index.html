@@ -14,6 +14,7 @@ h2{text-align:center;}
 button.action-btn {padding:0.5rem 1rem;margin:0.3rem;border:none;border-radius:5px;background:#32cd32;color:#fff;}
 ul {list-style:none;padding:0;}
 li {background:rgba(255,255,255,0.1);margin:0.5rem 0;padding:0.5rem;border-radius:5px;cursor:pointer;}
+.flashcard{width:90%;padding:1rem;margin:0.5rem auto;background:rgba(255,255,255,0.1);border-radius:8px;text-align:center;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -21,21 +22,20 @@ li {background:rgba(255,255,255,0.1);margin:0.5rem 0;padding:0.5rem;border-radiu
 <nav>
 <button onclick="showSection('quizHome')">Quiz</button>
 <button onclick="showSection('flashHome')">Flashcards</button>
+<button onclick="showSection('pomodoroSection')">Pomodoro</button>
+<button onclick="showSection('tasksSection')">Tâches</button>
 </nav>
-
 <!-- QUIZ -->
 <section id="quizHome">
 <h2>Choisis la matière</h2>
 <div id="quizSubjects"></div>
 </section>
-
 <section id="quizListSection">
 <h2 id="quizListTitle"></h2>
 <button class="action-btn" onclick="createQuiz()">Créer nouveau quiz</button>
 <ul id="quizList"></ul>
 <button class="action-btn" onclick="showSection('quizHome')">Retour</button>
 </section>
-
 <section id="quizCreateSection">
 <h2>Créer Quiz</h2>
 <input type="text" id="quizTitle" placeholder="Titre du quiz">
@@ -44,20 +44,24 @@ li {background:rgba(255,255,255,0.1);margin:0.5rem 0;padding:0.5rem;border-radiu
 <button class="action-btn" onclick="saveQuiz()">Sauvegarder</button>
 <button class="action-btn" onclick="showQuizList()">Annuler</button>
 </section>
-
+<section id="quizPlaySection">
+<h2 id="quizPlayTitle"></h2>
+<div id="quizQuestionContainer"></div>
+<button class="action-btn" onclick="nextQuestion()">Suivant</button>
+<button class="action-btn" onclick="showQuizList()">Quitter</button>
+<p id="quizScore"></p>
+</section>
 <!-- FLASHCARDS -->
 <section id="flashHome">
 <h2>Choisis la matière</h2>
 <div id="flashSubjects"></div>
 </section>
-
 <section id="flashListSection">
 <h2 id="flashListTitle"></h2>
 <button class="action-btn" onclick="createFlash()">Créer nouveau jeu</button>
 <ul id="flashList"></ul>
 <button class="action-btn" onclick="showSection('flashHome')">Retour</button>
 </section>
-
 <section id="flashCreateSection">
 <h2>Créer Flashcards</h2>
 <input type="text" id="flashTitle" placeholder="Titre du jeu de flashcards">
@@ -66,121 +70,147 @@ li {background:rgba(255,255,255,0.1);margin:0.5rem 0;padding:0.5rem;border-radiu
 <button class="action-btn" onclick="saveFlash()">Sauvegarder</button>
 <button class="action-btn" onclick="showFlashList()">Annuler</button>
 </section>
-
+<section id="flashPlaySection">
+<h2 id="flashPlayTitle"></h2>
+<div id="flashPlayContainer"></div>
+<button class="action-btn" onclick="showFlashList()">Quitter</button>
+</section>
+<!-- POMODORO -->
+<section id="pomodoroSection">
+<h2>Pomodoro</h2>
+<label>Temps travail (min) <input type="number" id="workTime" value="25"></label><br>
+<label>Temps pause (min) <input type="number" id="breakTime" value="5"></label><br>
+<button class="action-btn" onclick="startPomodoro()">Démarrer</button>
+<p id="timerDisplay"></p>
+</section>
+<!-- TÂCHES -->
+<section id="tasksSection">
+<h2>Tâches</h2>
+<input type="text" id="taskInput" placeholder="Nouvelle tâche">
+<button class="action-btn" onclick="addTask()">Ajouter</button>
+<ul id="taskList"></ul>
+</section>
 <script>
 // NAVIGATION
 function showSection(id){document.querySelectorAll('section').forEach(sec=>sec.style.display='none');document.getElementById(id).style.display='block';}
-
 // Matières
 const subjects=['Français','Maths','Sciences','Histoire','Anglais','Technologie'];
-
-// -------------------- QUIZ --------------------
-let currentSubject='',currentQuizList=[],currentQuiz=[];
-
-// Afficher matières pour quiz
+// -------------- QUIZ ------------------
+let currentSubject='',currentQuizList=[],currentQuiz=[],currentQuizIndex=0,quizScore=0;
 const quizSubjectsDiv=document.getElementById('quizSubjects');
 subjects.forEach(sub=>{
-  const btn=document.createElement('button'); btn.innerText=sub;
-  btn.className='action-btn';
-  btn.onclick=()=>{currentSubject=sub;showQuizList();};
-  quizSubjectsDiv.appendChild(btn);
+ const btn=document.createElement('button'); btn.innerText=sub;
+ btn.className='action-btn';
+ btn.onclick=()=>{currentSubject=sub;showQuizList();};
+ quizSubjectsDiv.appendChild(btn);
 });
-
 function showQuizList(){
-  showSection('quizListSection');
-  document.getElementById('quizListTitle').innerText=`Quiz: ${currentSubject}`;
-  const stored = JSON.parse(localStorage.getItem('quizzes'))||{};
-  currentQuizList=stored[currentSubject]||[];
-  displayQuizList();
+ showSection('quizListSection');
+ document.getElementById('quizListTitle').innerText=`Quiz: ${currentSubject}`;
+ const stored = JSON.parse(localStorage.getItem('quizzes'))||{};
+ currentQuizList=stored[currentSubject]||[];
+ displayQuizList();
 }
 function displayQuizList(){
-  const ul=document.getElementById('quizList'); ul.innerHTML='';
-  currentQuizList.forEach((q,i)=>{
-    const li=document.createElement('li'); li.innerText=q.title;
-    li.onclick=()=>{startQuiz(i)};
-    const delBtn=document.createElement('button'); delBtn.innerText='❌'; delBtn.style.marginLeft='10px';
-    delBtn.onclick=(e)=>{e.stopPropagation(); deleteQuiz(i);};
-    li.appendChild(delBtn);
-    ul.appendChild(li);
-  });
+ const ul=document.getElementById('quizList'); ul.innerHTML='';
+ currentQuizList.forEach((q,i)=>{
+   const li=document.createElement('li'); li.innerText=q.title;
+   li.onclick=()=>{startQuiz(i)};
+   const delBtn=document.createElement('button'); delBtn.innerText='❌'; delBtn.style.marginLeft='10px';
+   delBtn.onclick=(e)=>{e.stopPropagation(); deleteQuiz(i);};
+   li.appendChild(delBtn);
+   ul.appendChild(li);
+ });
 }
-function createQuiz(){
-  currentQuiz=[];document.getElementById('quizTitle').value='';document.getElementById('quizQuestionsContainer').innerHTML=''; showSection('quizCreateSection');}
+function createQuiz(){currentQuiz=[];document.getElementById('quizTitle').value='';document.getElementById('quizQuestionsContainer').innerHTML=''; showSection('quizCreateSection');}
 function addQuestion(){
-  const container=document.getElementById('quizQuestionsContainer');
-  const div=document.createElement('div');
-  div.innerHTML=`<input placeholder="Question"><br>
-    <input placeholder="Option 1">
-    <input placeholder="Option 2">
-    <input placeholder="Option 3">
-    <input placeholder="Option 4">
-    <select>
-      <option value="0">Option 1</option>
-      <option value="1">Option 2</option>
-      <option value="2">Option 3</option>
-      <option value="3">Option 4</option>
-    </select>`;
-  container.appendChild(div);
+ const container=document.getElementById('quizQuestionsContainer');
+ const div=document.createElement('div');
+ div.innerHTML=`<input placeholder="Question"><br>
+<input placeholder="Option 1">
+<input placeholder="Option 2">
+<input placeholder="Option 3">
+<input placeholder="Option 4">
+<select>
+<option value="0">Option 1</option>
+<option value="1">Option 2</option>
+<option value="2">Option 3</option>
+<option value="3">Option 4</option>
+</select>`;
+ container.appendChild(div);
 }
 function saveQuiz(){
-  const title=document.getElementById('quizTitle').value;
-  const container=document.getElementById('quizQuestionsContainer');
-  const questions=[];
-  for(let div of container.children){
-    const q=div.querySelectorAll('input');
-    const sel=div.querySelector('select');
-    questions.push({q:q[0].value, opts:[q[1].value,q[2].value,q[3].value,q[4].value], correct:parseInt(sel.value)});
-  }
-  if(!title||questions.length===0){alert('Remplis tout');return;}
-  const stored = JSON.parse(localStorage.getItem('quizzes'))||{};
-  if(!stored[currentSubject]) stored[currentSubject]=[];
-  stored[currentSubject].push({title,questions});
-  localStorage.setItem('quizzes',JSON.stringify(stored));
-  showQuizList();
+ const title=document.getElementById('quizTitle').value;
+ const container=document.getElementById('quizQuestionsContainer');
+ const questions=[];
+ for(let div of container.children){
+   const q=div.querySelectorAll('input');
+   const sel=div.querySelector('select');
+   questions.push({q:q[0].value, opts:[q[1].value,q[2].value,q[3].value,q[4].value], correct:parseInt(sel.value)});
+ }
+ if(!title||questions.length===0){alert('Remplis tout');return;}
+ const stored = JSON.parse(localStorage.getItem('quizzes'))||{};
+ if(!stored[currentSubject]) stored[currentSubject]=[];
+ stored[currentSubject].push({title,questions});
+ localStorage.setItem('quizzes',JSON.stringify(stored));
+ showQuizList();
 }
 function deleteQuiz(i){if(confirm('Supprimer ce quiz ?')){currentQuizList.splice(i,1); const stored=JSON.parse(localStorage.getItem('quizzes')); stored[currentSubject]=currentQuizList; localStorage.setItem('quizzes',JSON.stringify(stored)); displayQuizList();}}
-function startQuiz(i){alert('Ici le quiz démarre pour la question '+i+' (à compléter si tu veux le lancer vraiment)');}
-
-// -------------------- FLASHCARDS --------------------
-let currentFlashList=[],currentFlash=[],currentFlashSubject='';
-
-// Afficher matières pour flashcards
+function startQuiz(i){
+ currentQuiz=currentQuizList[i].questions; currentQuizIndex=0; quizScore=0;
+ document.getElementById('quizPlayTitle').innerText=currentQuizList[i].title;
+ showSection('quizPlaySection'); displayQuizQuestion();
+}
+function displayQuizQuestion(){
+ const container=document.getElementById('quizQuestionContainer'); container.innerHTML='';
+ if(currentQuizIndex>=currentQuiz.length){document.getElementById('quizScore').innerText=`Score: ${quizScore} / ${currentQuiz.length}`; return;}
+ const q=currentQuiz[currentQuizIndex];
+ const qDiv=document.createElement('div'); qDiv.innerHTML=`<p>${q.q}</p>`;
+ q.opts.forEach((opt,i)=>{
+   const btn=document.createElement('button'); btn.className='action-btn'; btn.innerText=opt;
+   btn.onclick=()=>{if(i===q.correct){alert('Bonne réponse !'); quizScore++;} else alert('Mauvaise réponse !');};
+   qDiv.appendChild(btn);
+ });
+ container.appendChild(qDiv);
+}
+function nextQuestion(){currentQuizIndex++; displayQuizQuestion();}
+// -------------- FLASHCARDS ------------------
+let currentFlashList=[],currentFlash=[],currentFlashIndex=0,currentFlashSubject='';
 const flashSubjectsDiv=document.getElementById('flashSubjects');
 subjects.forEach(sub=>{
-  const btn=document.createElement('button'); btn.innerText=sub;
-  btn.className='action-btn';
-  btn.onclick=()=>{currentFlashSubject=sub;showFlashList();};
-  flashSubjectsDiv.appendChild(btn);
+ const btn=document.createElement('button'); btn.innerText=sub;
+ btn.className='action-btn';
+ btn.onclick=()=>{currentFlashSubject=sub;showFlashList();};
+ flashSubjectsDiv.appendChild(btn);
 });
 function showFlashList(){
-  showSection('flashListSection');
-  document.getElementById('flashListTitle').innerText=`Flashcards: ${currentFlashSubject}`;
-  const stored=JSON.parse(localStorage.getItem('flashcards'))||{};
-  currentFlashList=stored[currentFlashSubject]||[];
-  const ul=document.getElementById('flashList'); ul.innerHTML='';
-  currentFlashList.forEach((f,i)=>{
-    const li=document.createElement('li'); li.innerText=f.title;
-    li.onclick=()=>{viewFlash(i)};
-    const delBtn=document.createElement('button'); delBtn.innerText='❌'; delBtn.style.marginLeft='10px';
-    delBtn.onclick=(e)=>{e.stopPropagation(); deleteFlash(i);};
-    li.appendChild(delBtn);
-    ul.appendChild(li);
-  });
+ showSection('flashListSection');
+ document.getElementById('flashListTitle').innerText=`Flashcards: ${currentFlashSubject}`;
+ const stored=JSON.parse(localStorage.getItem('flashcards'))||{};
+ currentFlashList=stored[currentFlashSubject]||[];
+ const ul=document.getElementById('flashList'); ul.innerHTML='';
+ currentFlashList.forEach((f,i)=>{
+   const li=document.createElement('li'); li.innerText=f.title;
+   li.onclick=()=>{startFlash(i)};
+   const delBtn=document.createElement('button'); delBtn.innerText='❌'; delBtn.style.marginLeft='10px';
+   delBtn.onclick=(e)=>{e.stopPropagation(); deleteFlash(i);};
+   li.appendChild(delBtn);
+   ul.appendChild(li);
+ });
 }
-function createFlash(){currentFlash=[];document.getElementById('flashTitle').value='';document.getElementById('flashContainer').innerHTML=''; showSection('flashCreateSection');}
-function addFlashcard(){
-  const question=prompt('Question ?'); const answer=prompt('Réponse ?'); if(question&&answer){currentFlash.push({question,answer}); alert('Ajouté');}}
-function saveFlash(){
-  const title=document.getElementById('flashTitle').value;
-  if(!title||currentFlash.length===0){alert('Remplis tout'); return;}
-  const stored=JSON.parse(localStorage.getItem('flashcards'))||{};
-  if(!stored[currentFlashSubject]) stored[currentFlashSubject]=[];
-  stored[currentFlashSubject].push({title,flashcards:currentFlash});
-  localStorage.setItem('flashcards',JSON.stringify(stored));
-  showFlashList();
-}
+function createFlash(){currentFlash=[];document.getElementById('flashTitle').value=''; showSection('flashCreateSection');}
+function addFlashcard(){const q=prompt('Question ?'); const a=prompt('Réponse ?'); if(q&&a){currentFlash.push({q,a}); alert('Ajouté');}}
+function saveFlash(){const title=document.getElementById('flashTitle').value; if(!title||currentFlash.length===0){alert('Remplis tout'); return;} const stored=JSON.parse(localStorage.getItem('flashcards'))||{}; if(!stored[currentFlashSubject]) stored[currentFlashSubject]=[]; stored[currentFlashSubject].push({title,flashcards:currentFlash}); localStorage.setItem('flashcards',JSON.stringify(stored)); showFlashList();}
 function deleteFlash(i){if(confirm('Supprimer ce jeu ?')){currentFlashList.splice(i,1); const stored=JSON.parse(localStorage.getItem('flashcards')); stored[currentFlashSubject]=currentFlashList; localStorage.setItem('flashcards',JSON.stringify(stored)); showFlashList();}}
-function viewFlash(i){alert('Ici on afficherait le jeu de flashcards: '+currentFlashList[i].title);}
+function startFlash(i){currentFlash=currentFlashList[i].flashcards; currentFlashIndex=0; document.getElementById('flashPlayTitle').innerText=currentFlashList[i].title; showSection('flashPlaySection'); displayFlash();}
+function displayFlash(){const container=document.getElementById('flashPlayContainer'); container.innerHTML=''; if(currentFlashIndex>=currentFlash.length){container.innerHTML='<p>Fin du jeu de flashcards !</p>'; return;} const card=document.createElement('div'); card.className='flashcard'; card.innerText=currentFlash[currentFlashIndex].q; let flipped=false; card.onclick=()=>{flipped=!flipped; card.innerText=flipped?currentFlash[currentFlashIndex].a:currentFlash[currentFlashIndex].q;}; container.appendChild(card); const nextBtn=document.createElement('button'); nextBtn.className='action-btn'; nextBtn.innerText='Suivant'; nextBtn.onclick=()=>{currentFlashIndex++; displayFlash();}; container.appendChild(nextBtn);}
+// -------------- TÂCHES ------------------
+const taskListEl=document.getElementById('taskList'); let tasks=JSON.parse(localStorage.getItem('tasks'))||[];
+function displayTasks(){taskListEl.innerHTML=''; tasks.forEach((t,i)=>{const li=document.createElement('li'); li.innerText=t; li.onclick=()=>{if(confirm('Supprimer cette tâche ?')){tasks.splice(i,1); localStorage.setItem('tasks',JSON.stringify(tasks)); displayTasks();}}; taskListEl.appendChild(li);});}
+function addTask(){const val=document.getElementById('taskInput').value; if(val){tasks.push(val); localStorage.setItem('tasks',JSON.stringify(tasks)); document.getElementById('taskInput').value=''; displayTasks();}} displayTasks();
+// -------------- POMODORO ------------------
+let pomodoroTimer,work=false;
+function startPomodoro(){let workMin=parseInt(document.getElementById('workTime').value),breakMin=parseInt(document.getElementById('breakTime').value); let time=(workMin*60); work=true; clearInterval(pomodoroTimer); pomodoroTimer=setInterval(()=>{if(time<=0){work=!work; time=(work?workMin*60:breakMin*60);} const m=Math.floor(time/60), s=time%60; document.getElementById('timerDisplay').innerText=(work?'Travail':'Pause')+` ${m}:${s<10?'0'+s:s}`; time--;},1000);}
 </script>
 </body>
 </html>
