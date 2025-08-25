@@ -13,44 +13,61 @@ class AssistanceScolaireApp extends StatelessWidget {
   }
 }
 
+// ----------------------
 // Écran principal
+// ----------------------
 class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Assistance Scolaire')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              child: Text('Quiz'),
-              onPressed: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => SubjectScreen(isQuiz: true))),
-            ),
-            ElevatedButton(
-              child: Text('Flashcards'),
-              onPressed: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => SubjectScreen(isQuiz: false))),
-            ),
-            ElevatedButton(
-              child: Text('Pomodoro'),
-              onPressed: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => PomodoroScreen())),
-            ),
-            ElevatedButton(
-              child: Text('Tâches'),
-              onPressed: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => TasksScreen())),
-            ),
-          ],
+      // Fond d'écran identique à l'ancienne version
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: NetworkImage(
+                'https://img.freepik.com/vecteurs-libre/fond-bulles-eau-brillante-fond-bleu_101'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                child: Text('Quiz'),
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => SubjectScreen(isQuiz: true))),
+              ),
+              ElevatedButton(
+                child: Text('Flashcards'),
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => SubjectScreen(isQuiz: false))),
+              ),
+              ElevatedButton(
+                child: Text('Pomodoro'),
+                onPressed: () => Navigator.push(
+                    context, MaterialPageRoute(builder: (_) => PomodoroScreen())),
+              ),
+              ElevatedButton(
+                child: Text('Tâches'),
+                onPressed: () => Navigator.push(
+                    context, MaterialPageRoute(builder: (_) => TasksScreen())),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+// ----------------------
 // Sélection de matière
+// ----------------------
 class SubjectScreen extends StatelessWidget {
   final bool isQuiz;
   SubjectScreen({required this.isQuiz});
@@ -60,7 +77,8 @@ class SubjectScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(isQuiz ? 'Choisir Matière - Quiz' : 'Choisir Matière - Flashcards')),
+      appBar: AppBar(
+          title: Text(isQuiz ? 'Choisir Matière - Quiz' : 'Choisir Matière - Flashcards')),
       body: ListView.builder(
         itemCount: subjects.length,
         itemBuilder: (context, index) {
@@ -70,7 +88,8 @@ class SubjectScreen extends StatelessWidget {
               Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => CardScreen(subject: subjects[index], isQuiz: isQuiz)));
+                      builder: (_) =>
+                          CardScreen(subject: subjects[index], isQuiz: isQuiz)));
             },
           );
         },
@@ -79,7 +98,9 @@ class SubjectScreen extends StatelessWidget {
   }
 }
 
+// ----------------------
 // Écran des cartes / quiz avec swipe
+// ----------------------
 class CardScreen extends StatefulWidget {
   final String subject;
   final bool isQuiz;
@@ -101,12 +122,10 @@ class _CardScreenState extends State<CardScreen> {
   }
 
   void swipeRight() {
-    // Bon
     nextCard();
   }
 
   void swipeLeft() {
-    // Pas bon
     nextCard();
   }
 
@@ -116,7 +135,6 @@ class _CardScreenState extends State<CardScreen> {
         currentIndex++;
       });
     } else {
-      // Fin des cartes
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -136,7 +154,8 @@ class _CardScreenState extends State<CardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('${widget.subject} - ${widget.isQuiz ? 'Quiz' : 'Flashcards'}')),
+      appBar: AppBar(
+          title: Text('${widget.subject} - ${widget.isQuiz ? 'Quiz' : 'Flashcards'}')),
       body: Center(
         child: GestureDetector(
           onPanEnd: (details) {
@@ -160,7 +179,9 @@ class _CardScreenState extends State<CardScreen> {
   }
 }
 
+// ----------------------
 // Pomodoro
+// ----------------------
 class PomodoroScreen extends StatefulWidget {
   @override
   _PomodoroScreenState createState() => _PomodoroScreenState();
@@ -170,7 +191,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   int minutes = 25;
   int seconds = 0;
   bool isRunning = false;
-  late Ticker _ticker;
+  late final Ticker _ticker;
 
   @override
   void initState() {
@@ -200,19 +221,13 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
     super.dispose();
   }
 
-  void startPause() {
-    setState(() {
-      isRunning = !isRunning;
-    });
-  }
+  void startPause() => setState(() => isRunning = !isRunning);
 
-  void reset() {
-    setState(() {
-      minutes = 25;
-      seconds = 0;
-      isRunning = false;
-    });
-  }
+  void reset() => setState(() {
+        minutes = 25;
+        seconds = 0;
+        isRunning = false;
+      });
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +237,8 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}', style: TextStyle(fontSize: 60)),
+            Text('${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                style: TextStyle(fontSize: 60)),
             SizedBox(height: 20),
             ElevatedButton(onPressed: startPause, child: Text(isRunning ? 'Pause' : 'Démarrer')),
             ElevatedButton(onPressed: reset, child: Text('Réinitialiser')),
@@ -233,7 +249,9 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   }
 }
 
+// ----------------------
 // Tâches
+// ----------------------
 class TasksScreen extends StatefulWidget {
   @override
   _TasksScreenState createState() => _TasksScreenState();
@@ -244,17 +262,12 @@ class _TasksScreenState extends State<TasksScreen> {
   TextEditingController controller = TextEditingController();
 
   void addTask(String task) {
-    setState(() {
-      tasks.add(task);
-    });
+    if (task.trim().isEmpty) return;
+    setState(() => tasks.add(task));
     controller.clear();
   }
 
-  void removeTask(int index) {
-    setState(() {
-      tasks.removeAt(index);
-    });
-  }
+  void removeTask(int index) => setState(() => tasks.removeAt(index));
 
   @override
   Widget build(BuildContext context) {
@@ -267,7 +280,10 @@ class _TasksScreenState extends State<TasksScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(controller: controller, decoration: InputDecoration(labelText: 'Nouvelle tâche')),
+                  child: TextField(
+                    controller: controller,
+                    decoration: InputDecoration(labelText: 'Nouvelle tâche'),
+                  ),
                 ),
                 IconButton(icon: Icon(Icons.add), onPressed: () => addTask(controller.text))
               ],
@@ -279,7 +295,8 @@ class _TasksScreenState extends State<TasksScreen> {
               itemBuilder: (context, index) {
                 return ListTile(
                   title: Text(tasks[index]),
-                  trailing: IconButton(icon: Icon(Icons.delete), onPressed: () => removeTask(index)),
+                  trailing: IconButton(
+                      icon: Icon(Icons.delete), onPressed: () => removeTask(index)),
                 );
               },
             ),
@@ -290,22 +307,20 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 }
 
-// Simple ticker pour Pomodoro
+// ----------------------
+// Ticker pour Pomodoro
+// ----------------------
 class Ticker {
   final void Function(Duration) onTick;
-  late final Stopwatch _stopwatch;
-  late final Duration _interval;
   bool _running = false;
 
   Ticker(this.onTick) {
-    _stopwatch = Stopwatch();
-    _interval = Duration(seconds: 1);
     _tick();
   }
 
   void _tick() async {
     while (true) {
-      await Future.delayed(_interval);
+      await Future.delayed(Duration(seconds: 1));
       if (_running) onTick(Duration(seconds: 1));
     }
   }
