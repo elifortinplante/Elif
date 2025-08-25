@@ -1,216 +1,556 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Assistant Scolaire</title>
 <style>
-body {margin:0;font-family:Arial,sans-serif;background:url('https://img.freepik.com/vecteurs-libre/fond-bulles-eau-brillante-fond-bleu_1017-26353.jpg') no-repeat center center fixed;background-size:cover;color:#fff;}
-header {padding:1rem;background:rgba(0,0,0,0.5);text-align:center;font-size:1.5rem;font-weight:bold;}
-nav {display:flex;flex-wrap:wrap;justify-content:space-around;padding:0.5rem;background:rgba(0,0,0,0.4);}
-nav button {flex:1 1 30%;margin:0.5rem;padding:0.8rem;font-size:1rem;border:none;border-radius:8px;background:#1e90ff;color:#fff;}
-section {padding:1rem;display:none;background:rgba(0,0,0,0.4);min-height:80vh;}
-h2{text-align:center;}
-button.action-btn {padding:0.5rem 1rem;margin:0.3rem;border:none;border-radius:5px;background:#32cd32;color:#fff;}
-ul {list-style:none;padding:0;}
-li {background:rgba(255,255,255,0.1);margin:0.5rem 0;padding:0.5rem;border-radius:5px;cursor:pointer;}
-.flashcard{width:90%;padding:1rem;margin:0.5rem auto;background:rgba(255,255,255,0.1);border-radius:8px;text-align:center;cursor:pointer;}
+  body{margin:0;font-family:Arial,sans-serif;background:url('https://img.freepik.com/vecteurs-libre/fond-bulles-eau-brillante-fond-bleu_1017-26353.jpg') no-repeat center center fixed;background-size:cover;color:#fff;}
+  header{padding:1rem;background:rgba(0,0,0,0.5);text-align:center;font-size:1.5rem;font-weight:bold;}
+  nav{display:flex;flex-wrap:wrap;justify-content:space-around;padding:0.5rem;background:rgba(0,0,0,0.4);}
+  nav button{flex:1 1 30%;margin:0.5rem;padding:0.8rem;font-size:1rem;border:none;border-radius:8px;background:#1e90ff;color:#fff;}
+  section{padding:1rem;display:none;background:rgba(0,0,0,0.4);min-height:80vh;}
+  h2{text-align:center;}
+  button.action-btn{padding:0.5rem 1rem;margin:0.3rem;border:none;border-radius:6px;background:#32cd32;color:#fff;}
+  ul{list-style:none;padding:0;}
+  li{background:rgba(255,255,255,0.1);margin:0.5rem 0;padding:0.5rem;border-radius:5px;cursor:pointer;}
+
+  /* Flashcards */
+  .flashcard-wrap{position:relative;width:90%;max-width:460px;margin:1rem auto;}
+  .flashcard{
+    background:rgba(255,255,255,0.12);
+    backdrop-filter: blur(2px);
+    border-radius:12px;
+    min-height:140px;
+    display:flex;align-items:center;justify-content:center;
+    padding:1rem;text-align:center;font-size:1.1rem;
+    user-select:none;touch-action:none;
+    transition:transform .2s ease, opacity .2s ease, box-shadow .2s ease;
+    box-shadow:0 8px 22px rgba(0,0,0,.25);
+  }
+  .flashcard.dragging{transition:none;box-shadow:0 12px 28px rgba(0,0,0,.35);}
+  .hint{opacity:.85;text-align:center;font-size:.95rem;margin-top:.4rem}
+  .badges{
+    position:absolute;inset:0;pointer-events:none;display:flex;justify-content:space-between;align-items:center;padding:0 10px;
+  }
+  .badge{
+    font-size:1.2rem;font-weight:bold;padding:.3rem .5rem;border-radius:8px;opacity:.0;transition:opacity .15s ease;
+  }
+  .badge.good{background:rgba(50,205,50,.8);}
+  .badge.bad{background:rgba(255,77,77,.8);}
+
+  /* Quiz */
+  .option-btn{display:block;width:100%;max-width:480px;margin:.4rem auto;padding:.6rem;border:none;border-radius:8px;background:#1e90ff;color:#fff;}
+  .row{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center}
+  .muted{opacity:.85;text-align:center}
 </style>
 </head>
 <body>
 <header>Assistant Scolaire</header>
 <nav>
-<button onclick="showSection('quizHome')">Quiz</button>
-<button onclick="showSection('flashHome')">Flashcards</button>
-<button onclick="showSection('pomodoroSection')">Pomodoro</button>
-<button onclick="showSection('tasksSection')">Tâches</button>
+  <button onclick="showSection('quizHome')">Quiz</button>
+  <button onclick="showSection('flashHome')">Flashcards</button>
+  <button onclick="showSection('pomodoroSection')">Pomodoro</button>
+  <button onclick="showSection('tasksSection')">Tâches</button>
 </nav>
-<!-- QUIZ -->
+
+<!-- ========== QUIZ ========== -->
 <section id="quizHome">
-<h2>Choisis la matière</h2>
-<div id="quizSubjects"></div>
+  <h2>Quiz • Choisis la matière</h2>
+  <div id="quizSubjects" class="row"></div>
 </section>
+
 <section id="quizListSection">
-<h2 id="quizListTitle"></h2>
-<button class="action-btn" onclick="createQuiz()">Créer nouveau quiz</button>
-<ul id="quizList"></ul>
-<button class="action-btn" onclick="showSection('quizHome')">Retour</button>
+  <h2 id="quizListTitle"></h2>
+  <button class="action-btn" onclick="createQuiz()">Créer nouveau quiz</button>
+  <ul id="quizList"></ul>
+  <button class="action-btn" onclick="showSection('quizHome')">Retour</button>
 </section>
+
 <section id="quizCreateSection">
-<h2>Créer Quiz</h2>
-<input type="text" id="quizTitle" placeholder="Titre du quiz">
-<div id="quizQuestionsContainer"></div>
-<button class="action-btn" onclick="addQuestion()">Ajouter question</button>
-<button class="action-btn" onclick="saveQuiz()">Sauvegarder</button>
-<button class="action-btn" onclick="showQuizList()">Annuler</button>
+  <h2>Créer un Quiz</h2>
+  <input type="text" id="quizTitle" placeholder="Titre du quiz">
+  <div id="quizQuestionsContainer"></div>
+  <button class="action-btn" onclick="addQuestion()">Ajouter une question</button>
+  <button class="action-btn" onclick="saveQuiz()">Sauvegarder</button>
+  <button class="action-btn" onclick="showQuizList()">Annuler</button>
 </section>
+
 <section id="quizPlaySection">
-<h2 id="quizPlayTitle"></h2>
-<div id="quizQuestionContainer"></div>
-<button class="action-btn" onclick="nextQuestion()">Suivant</button>
-<button class="action-btn" onclick="showQuizList()">Quitter</button>
-<p id="quizScore"></p>
+  <h2 id="quizPlayTitle"></h2>
+  <div id="quizQuestionContainer"></div>
+  <div class="row">
+    <button id="nextBtn" class="action-btn" onclick="nextQuestion()" disabled>Suivant</button>
+    <button class="action-btn" onclick="showQuizList()">Quitter</button>
+  </div>
+  <p id="quizFeedback" class="muted"></p>
+  <p id="quizScore"></p>
+  <div id="quizEndActions" class="row" style="display:none;">
+    <button class="action-btn" onclick="restartQuizAll()">Recommencer tout</button>
+    <button id="quizRetryWrongBtn" class="action-btn" onclick="restartQuizWrong()">Rejouer les mauvaises</button>
+  </div>
 </section>
-<!-- FLASHCARDS -->
+
+<!-- ========== FLASHCARDS ========== -->
 <section id="flashHome">
-<h2>Choisis la matière</h2>
-<div id="flashSubjects"></div>
+  <h2>Flashcards • Choisis la matière</h2>
+  <div id="flashSubjects" class="row"></div>
 </section>
+
 <section id="flashListSection">
-<h2 id="flashListTitle"></h2>
-<button class="action-btn" onclick="createFlash()">Créer nouveau jeu</button>
-<ul id="flashList"></ul>
-<button class="action-btn" onclick="showSection('flashHome')">Retour</button>
+  <h2 id="flashListTitle"></h2>
+  <button class="action-btn" onclick="createFlash()">Créer nouveau jeu</button>
+  <ul id="flashList"></ul>
+  <button class="action-btn" onclick="showSection('flashHome')">Retour</button>
 </section>
+
 <section id="flashCreateSection">
-<h2>Créer Flashcards</h2>
-<input type="text" id="flashTitle" placeholder="Titre du jeu de flashcards">
-<div id="flashContainer"></div>
-<button class="action-btn" onclick="addFlashcard()">Ajouter flashcard</button>
-<button class="action-btn" onclick="saveFlash()">Sauvegarder</button>
-<button class="action-btn" onclick="showFlashList()">Annuler</button>
+  <h2>Créer un jeu de Flashcards</h2>
+  <input type="text" id="flashTitle" placeholder="Titre du jeu">
+  <div class="row">
+    <button class="action-btn" onclick="addFlashcard()">Ajouter une carte</button>
+    <button class="action-btn" onclick="saveFlash()">Sauvegarder</button>
+    <button class="action-btn" onclick="showFlashList()">Annuler</button>
+  </div>
+  <ul id="flashDraftList"></ul>
 </section>
+
 <section id="flashPlaySection">
-<h2 id="flashPlayTitle"></h2>
-<div id="flashPlayContainer"></div>
-<button class="action-btn" onclick="showFlashList()">Quitter</button>
+  <h2 id="flashPlayTitle"></h2>
+  <div class="flashcard-wrap">
+    <div id="flashCard" class="flashcard"></div>
+    <div class="badges">
+      <div id="badgeBad" class="badge bad">❌ Mauvais</div>
+      <div id="badgeGood" class="badge good">✅ Bon</div>
+    </div>
+  </div>
+  <p class="hint">Glisse ↔️ : droite = bon, gauche = mauvais • Tape pour retourner</p>
+  <div class="row">
+    <button class="action-btn" onclick="quitFlash()">Quitter</button>
+  </div>
+  <p id="flashProgress" class="muted" style="margin-top:.5rem;"></p>
+  <div id="flashEndActions" class="row" style="display:none;">
+    <button class="action-btn" onclick="restartAll()">Recommencer tout</button>
+    <button class="action-btn" id="retryWrongBtn" onclick="restartWrong()">Rejouer les ratées</button>
+  </div>
 </section>
-<!-- POMODORO -->
+
+<!-- ========== POMODORO ========== -->
 <section id="pomodoroSection">
-<h2>Pomodoro</h2>
-<label>Temps travail (min) <input type="number" id="workTime" value="25"></label><br>
-<label>Temps pause (min) <input type="number" id="breakTime" value="5"></label><br>
-<button class="action-btn" onclick="startPomodoro()">Démarrer</button>
-<p id="timerDisplay"></p>
+  <h2>Pomodoro</h2>
+  <label>Temps travail (min) <input type="number" id="workTime" value="25"></label><br>
+  <label>Temps pause (min) <input type="number" id="breakTime" value="5"></label><br>
+  <button class="action-btn" onclick="startPomodoro()">Démarrer</button>
+  <p id="timerDisplay"></p>
 </section>
-<!-- TÂCHES -->
+
+<!-- ========== TÂCHES ========== -->
 <section id="tasksSection">
-<h2>Tâches</h2>
-<input type="text" id="taskInput" placeholder="Nouvelle tâche">
-<button class="action-btn" onclick="addTask()">Ajouter</button>
-<ul id="taskList"></ul>
+  <h2>Tâches</h2>
+  <input type="text" id="taskInput" placeholder="Nouvelle tâche">
+  <button class="action-btn" onclick="addTask()">Ajouter</button>
+  <ul id="taskList"></ul>
 </section>
+
 <script>
-// NAVIGATION
-function showSection(id){document.querySelectorAll('section').forEach(sec=>sec.style.display='none');document.getElementById(id).style.display='block';}
-// Matières
+/* ========= Helpers ========= */
+function showSection(id){
+  document.querySelectorAll('section').forEach(sec=>sec.style.display='none');
+  document.getElementById(id).style.display='block';
+}
 const subjects=['Français','Maths','Sciences','Histoire','Anglais','Technologie'];
-// -------------- QUIZ ------------------
-let currentSubject='',currentQuizList=[],currentQuiz=[],currentQuizIndex=0,quizScore=0;
+function shuffle(arr){ // Fisher–Yates
+  const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a;
+}
+
+/* ========= Quiz ========= */
+let currentSubject='',currentQuizList=[],quizDeck=[],quizIndex=0,quizScore=0,quizAnswered=false,quizWrongIndices=[],quizOriginalDeck=[];
+
 const quizSubjectsDiv=document.getElementById('quizSubjects');
 subjects.forEach(sub=>{
- const btn=document.createElement('button'); btn.innerText=sub;
- btn.className='action-btn';
- btn.onclick=()=>{currentSubject=sub;showQuizList();};
- quizSubjectsDiv.appendChild(btn);
+  const btn=document.createElement('button'); btn.innerText=sub; btn.className='action-btn';
+  btn.onclick=()=>{currentSubject=sub;showQuizList();};
+  quizSubjectsDiv.appendChild(btn);
 });
+
 function showQuizList(){
- showSection('quizListSection');
- document.getElementById('quizListTitle').innerText=`Quiz: ${currentSubject}`;
- const stored = JSON.parse(localStorage.getItem('quizzes'))||{};
- currentQuizList=stored[currentSubject]||[];
- displayQuizList();
+  showSection('quizListSection');
+  document.getElementById('quizListTitle').innerText=`Quiz: ${currentSubject}`;
+  const stored = JSON.parse(localStorage.getItem('quizzes'))||{};
+  currentQuizList=stored[currentSubject]||[];
+  displayQuizList();
 }
 function displayQuizList(){
- const ul=document.getElementById('quizList'); ul.innerHTML='';
- currentQuizList.forEach((q,i)=>{
-   const li=document.createElement('li'); li.innerText=q.title;
-   li.onclick=()=>{startQuiz(i)};
-   const delBtn=document.createElement('button'); delBtn.innerText='❌'; delBtn.style.marginLeft='10px';
-   delBtn.onclick=(e)=>{e.stopPropagation(); deleteQuiz(i);};
-   li.appendChild(delBtn);
-   ul.appendChild(li);
- });
+  const ul=document.getElementById('quizList'); ul.innerHTML='';
+  currentQuizList.forEach((q,i)=>{
+    const li=document.createElement('li'); li.innerText=q.title;
+    li.onclick=()=>{startQuiz(i)};
+    const delBtn=document.createElement('button'); delBtn.innerText='❌'; delBtn.style.marginLeft='10px';
+    delBtn.onclick=(e)=>{e.stopPropagation(); deleteQuiz(i);};
+    li.appendChild(delBtn); ul.appendChild(li);
+  });
 }
-function createQuiz(){currentQuiz=[];document.getElementById('quizTitle').value='';document.getElementById('quizQuestionsContainer').innerHTML=''; showSection('quizCreateSection');}
+function createQuiz(){
+  document.getElementById('quizTitle').value='';
+  document.getElementById('quizQuestionsContainer').innerHTML='';
+  showSection('quizCreateSection');
+}
 function addQuestion(){
- const container=document.getElementById('quizQuestionsContainer');
- const div=document.createElement('div');
- div.innerHTML=`<input placeholder="Question"><br>
-<input placeholder="Option 1">
-<input placeholder="Option 2">
-<input placeholder="Option 3">
-<input placeholder="Option 4">
-<select>
-<option value="0">Option 1</option>
-<option value="1">Option 2</option>
-<option value="2">Option 3</option>
-<option value="3">Option 4</option>
-</select>`;
- container.appendChild(div);
+  const container=document.getElementById('quizQuestionsContainer');
+  const div=document.createElement('div'); div.style.margin='0.6rem 0';
+  div.innerHTML=`<input placeholder="Question"><br>
+    <input placeholder="Option 1">
+    <input placeholder="Option 2">
+    <input placeholder="Option 3">
+    <input placeholder="Option 4">
+    <select>
+      <option value="0">Option 1</option>
+      <option value="1">Option 2</option>
+      <option value="2">Option 3</option>
+      <option value="3">Option 4</option>
+    </select>`;
+  container.appendChild(div);
 }
 function saveQuiz(){
- const title=document.getElementById('quizTitle').value;
- const container=document.getElementById('quizQuestionsContainer');
- const questions=[];
- for(let div of container.children){
-   const q=div.querySelectorAll('input');
-   const sel=div.querySelector('select');
-   questions.push({q:q[0].value, opts:[q[1].value,q[2].value,q[3].value,q[4].value], correct:parseInt(sel.value)});
- }
- if(!title||questions.length===0){alert('Remplis tout');return;}
- const stored = JSON.parse(localStorage.getItem('quizzes'))||{};
- if(!stored[currentSubject]) stored[currentSubject]=[];
- stored[currentSubject].push({title,questions});
- localStorage.setItem('quizzes',JSON.stringify(stored));
- showQuizList();
+  const title=document.getElementById('quizTitle').value.trim();
+  const container=document.getElementById('quizQuestionsContainer');
+  const questions=[];
+  for(const div of container.children){
+    const q=div.querySelectorAll('input');
+    const sel=div.querySelector('select');
+    if(!q[0].value.trim()||[q[1],q[2],q[3],q[4]].some(x=>!x.value.trim())){alert('Remplis toutes les questions et options.');return;}
+    questions.push({q:q[0].value, opts:[q[1].value,q[2].value,q[3].value,q[4].value], correct:parseInt(sel.value)});
+  }
+  if(!title||questions.length===0){alert('Ajoute un titre et au moins une question.');return;}
+  const stored=JSON.parse(localStorage.getItem('quizzes'))||{};
+  (stored[currentSubject]??=[]).push({title,questions});
+  localStorage.setItem('quizzes',JSON.stringify(stored));
+  showQuizList();
 }
-function deleteQuiz(i){if(confirm('Supprimer ce quiz ?')){currentQuizList.splice(i,1); const stored=JSON.parse(localStorage.getItem('quizzes')); stored[currentSubject]=currentQuizList; localStorage.setItem('quizzes',JSON.stringify(stored)); displayQuizList();}}
+function deleteQuiz(i){
+  if(!confirm('Supprimer ce quiz ?')) return;
+  currentQuizList.splice(i,1);
+  const stored=JSON.parse(localStorage.getItem('quizzes'))||{};
+  stored[currentSubject]=currentQuizList; localStorage.setItem('quizzes',JSON.stringify(stored));
+  displayQuizList();
+}
+
+function buildQuizDeck(rawQ){
+  // Convertit en {q, options:[{text,isCorrect}...]}
+  return rawQ.map(q=>{
+    const options=q.opts.map((t,idx)=>({text:t,isCorrect: idx===q.correct}));
+    return {q:q.q, options: shuffle(options)}; // mélange les options
+  });
+}
 function startQuiz(i){
- currentQuiz=currentQuizList[i].questions; currentQuizIndex=0; quizScore=0;
- document.getElementById('quizPlayTitle').innerText=currentQuizList[i].title;
- showSection('quizPlaySection'); displayQuizQuestion();
+  const raw = currentQuizList[i].questions;
+  quizOriginalDeck = buildQuizDeck(raw);                 // deck de référence
+  quizDeck = shuffle(quizOriginalDeck.map(x=>({...x}))); // mélange questions
+  quizIndex=0; quizScore=0; quizWrongIndices=[]; quizAnswered=false;
+  document.getElementById('quizPlayTitle').innerText=currentQuizList[i].title;
+  document.getElementById('quizScore').innerText=''; 
+  document.getElementById('quizFeedback').innerText='';
+  document.getElementById('quizEndActions').style.display='none';
+  document.getElementById('quizRetryWrongBtn').disabled=true;
+  document.getElementById('nextBtn').disabled=true;
+  showSection('quizPlaySection'); displayQuizQuestion();
 }
 function displayQuizQuestion(){
- const container=document.getElementById('quizQuestionContainer'); container.innerHTML='';
- if(currentQuizIndex>=currentQuiz.length){document.getElementById('quizScore').innerText=`Score: ${quizScore} / ${currentQuiz.length}`; return;}
- const q=currentQuiz[currentQuizIndex];
- const qDiv=document.createElement('div'); qDiv.innerHTML=`<p>${q.q}</p>`;
- q.opts.forEach((opt,i)=>{
-   const btn=document.createElement('button'); btn.className='action-btn'; btn.innerText=opt;
-   btn.onclick=()=>{if(i===q.correct){alert('Bonne réponse !'); quizScore++;} else alert('Mauvaise réponse !');};
-   qDiv.appendChild(btn);
- });
- container.appendChild(qDiv);
+  const container=document.getElementById('quizQuestionContainer'); container.innerHTML='';
+  if(quizIndex>=quizDeck.length){
+    const scoreText=`Score : ${quizScore} / ${quizDeck.length}`;
+    document.getElementById('quizScore').innerText=scoreText;
+    document.getElementById('quizFeedback').innerText='';
+    document.getElementById('quizEndActions').style.display='flex';
+    document.getElementById('quizRetryWrongBtn').disabled = (quizWrongIndices.length===0);
+    document.getElementById('nextBtn').disabled=true;
+    return;
+  }
+  const q=quizDeck[quizIndex];
+  const qDiv=document.createElement('div'); qDiv.innerHTML=`<p>${q.q}</p>`;
+  q.options.forEach((opt)=>{
+    const btn=document.createElement('button'); btn.className='option-btn'; btn.innerText=opt.text;
+    btn.onclick=()=>{
+      if(quizAnswered) return;
+      quizAnswered=true;
+      if(opt.isCorrect){
+        quizScore++; document.getElementById('quizFeedback').innerText='✅ Bonne réponse';
+      }else{
+        document.getElementById('quizFeedback').innerText='❌ Mauvaise réponse';
+        // mémorise l’index absolu (dans quizOriginalDeck) de la question actuelle
+        const absIndex = findQuizAbsIndex(q);
+        if(absIndex!==-1) quizWrongIndices.push(absIndex);
+      }
+      document.getElementById('nextBtn').disabled=false;
+    };
+    qDiv.appendChild(btn);
+  });
+  container.appendChild(qDiv);
 }
-function nextQuestion(){currentQuizIndex++; displayQuizQuestion();}
-// -------------- FLASHCARDS ------------------
-let currentFlashList=[],currentFlash=[],currentFlashIndex=0,currentFlashSubject='';
+function findQuizAbsIndex(qObj){
+  // Retrouve l’objet équivalent dans quizOriginalDeck (par texte question + ensemble des options)
+  return quizOriginalDeck.findIndex(entry=>{
+    if(entry.q!==qObj.q) return false;
+    const a = entry.options.map(o=>o.text).sort().join('|');
+    const b = qObj.options.map(o=>o.text).sort().join('|');
+    return a===b;
+  });
+}
+function nextQuestion(){
+  if(quizIndex<quizDeck.length){ quizIndex++; quizAnswered=false; document.getElementById('quizFeedback').innerText=''; document.getElementById('nextBtn').disabled=true; displayQuizQuestion(); }
+}
+function restartQuizAll(){
+  quizDeck = shuffle(quizOriginalDeck.map(x=>({...x, options:shuffle(x.options)})));
+  quizIndex=0; quizScore=0; quizWrongIndices=[]; quizAnswered=false;
+  document.getElementById('quizEndActions').style.display='none';
+  displayQuizQuestion();
+}
+function restartQuizWrong(){
+  if(quizWrongIndices.length===0) return;
+  const subset = quizWrongIndices.map(i=>({...quizOriginalDeck[i]}));
+  subset.forEach(q=>q.options=shuffle(q.options));
+  quizDeck = shuffle(subset);
+  quizIndex=0; quizScore=0; quizWrongIndices=[]; quizAnswered=false;
+  document.getElementById('quizEndActions').style.display='none';
+  displayQuizQuestion();
+}
+
+/* ========= Flashcards (swipe + shuffle) ========= */
+let currentFlashSubject='',currentFlashList=[],currentFlash=[],currentFlashIndex=0;
+let wrongIndices=[], correctCount=0, initialDeck=[];
+
 const flashSubjectsDiv=document.getElementById('flashSubjects');
 subjects.forEach(sub=>{
- const btn=document.createElement('button'); btn.innerText=sub;
- btn.className='action-btn';
- btn.onclick=()=>{currentFlashSubject=sub;showFlashList();};
- flashSubjectsDiv.appendChild(btn);
+  const btn=document.createElement('button'); btn.innerText=sub; btn.className='action-btn';
+  btn.onclick=()=>{currentFlashSubject=sub;showFlashList();};
+  flashSubjectsDiv.appendChild(btn);
 });
+
 function showFlashList(){
- showSection('flashListSection');
- document.getElementById('flashListTitle').innerText=`Flashcards: ${currentFlashSubject}`;
- const stored=JSON.parse(localStorage.getItem('flashcards'))||{};
- currentFlashList=stored[currentFlashSubject]||[];
- const ul=document.getElementById('flashList'); ul.innerHTML='';
- currentFlashList.forEach((f,i)=>{
-   const li=document.createElement('li'); li.innerText=f.title;
-   li.onclick=()=>{startFlash(i)};
-   const delBtn=document.createElement('button'); delBtn.innerText='❌'; delBtn.style.marginLeft='10px';
-   delBtn.onclick=(e)=>{e.stopPropagation(); deleteFlash(i);};
-   li.appendChild(delBtn);
-   ul.appendChild(li);
- });
+  showSection('flashListSection');
+  document.getElementById('flashListTitle').innerText=`Flashcards: ${currentFlashSubject}`;
+  const stored=JSON.parse(localStorage.getItem('flashcards'))||{};
+  currentFlashList=stored[currentFlashSubject]||[];
+  const ul=document.getElementById('flashList'); ul.innerHTML='';
+  currentFlashList.forEach((f,i)=>{
+    const li=document.createElement('li'); li.innerText=f.title;
+    li.onclick=()=>{startFlash(i)};
+    const delBtn=document.createElement('button'); delBtn.innerText='❌'; delBtn.style.marginLeft='10px';
+    delBtn.onclick=(e)=>{e.stopPropagation(); deleteFlash(i);};
+    li.appendChild(delBtn); ul.appendChild(li);
+  });
 }
-function createFlash(){currentFlash=[];document.getElementById('flashTitle').value=''; showSection('flashCreateSection');}
-function addFlashcard(){const q=prompt('Question ?'); const a=prompt('Réponse ?'); if(q&&a){currentFlash.push({q,a}); alert('Ajouté');}}
-function saveFlash(){const title=document.getElementById('flashTitle').value; if(!title||currentFlash.length===0){alert('Remplis tout'); return;} const stored=JSON.parse(localStorage.getItem('flashcards'))||{}; if(!stored[currentFlashSubject]) stored[currentFlashSubject]=[]; stored[currentFlashSubject].push({title,flashcards:currentFlash}); localStorage.setItem('flashcards',JSON.stringify(stored)); showFlashList();}
-function deleteFlash(i){if(confirm('Supprimer ce jeu ?')){currentFlashList.splice(i,1); const stored=JSON.parse(localStorage.getItem('flashcards')); stored[currentFlashSubject]=currentFlashList; localStorage.setItem('flashcards',JSON.stringify(stored)); showFlashList();}}
-function startFlash(i){currentFlash=currentFlashList[i].flashcards; currentFlashIndex=0; document.getElementById('flashPlayTitle').innerText=currentFlashList[i].title; showSection('flashPlaySection'); displayFlash();}
-function displayFlash(){const container=document.getElementById('flashPlayContainer'); container.innerHTML=''; if(currentFlashIndex>=currentFlash.length){container.innerHTML='<p>Fin du jeu de flashcards !</p>'; return;} const card=document.createElement('div'); card.className='flashcard'; card.innerText=currentFlash[currentFlashIndex].q; let flipped=false; card.onclick=()=>{flipped=!flipped; card.innerText=flipped?currentFlash[currentFlashIndex].a:currentFlash[currentFlashIndex].q;}; container.appendChild(card); const nextBtn=document.createElement('button'); nextBtn.className='action-btn'; nextBtn.innerText='Suivant'; nextBtn.onclick=()=>{currentFlashIndex++; displayFlash();}; container.appendChild(nextBtn);}
-// -------------- TÂCHES ------------------
-const taskListEl=document.getElementById('taskList'); let tasks=JSON.parse(localStorage.getItem('tasks'))||[];
-function displayTasks(){taskListEl.innerHTML=''; tasks.forEach((t,i)=>{const li=document.createElement('li'); li.innerText=t; li.onclick=()=>{if(confirm('Supprimer cette tâche ?')){tasks.splice(i,1); localStorage.setItem('tasks',JSON.stringify(tasks)); displayTasks();}}; taskListEl.appendChild(li);});}
-function addTask(){const val=document.getElementById('taskInput').value; if(val){tasks.push(val); localStorage.setItem('tasks',JSON.stringify(tasks)); document.getElementById('taskInput').value=''; displayTasks();}} displayTasks();
-// -------------- POMODORO ------------------
+
+function createFlash(){
+  document.getElementById('flashTitle').value='';
+  document.getElementById('flashDraftList').innerHTML='';
+  draftFlashcards.length=0;
+  showSection('flashCreateSection');
+}
+
+const draftFlashcards=[];
+function addFlashcard(){
+  const q=prompt('Question ?'); const a=prompt('Réponse ?');
+  if(q&&a){
+    draftFlashcards.push({q,a});
+    const li=document.createElement('li'); li.textContent=`Q: ${q} — R: ${a}`;
+    document.getElementById('flashDraftList').appendChild(li);
+  }
+}
+function saveFlash(){
+  const title=document.getElementById('flashTitle').value.trim();
+  if(!title||draftFlashcards.length===0){alert('Ajoute un titre et au moins une carte.');return;}
+  const stored=JSON.parse(localStorage.getItem('flashcards'))||{};
+  (stored[currentFlashSubject]??=[]).push({title,flashcards:[...draftFlashcards]});
+  localStorage.setItem('flashcards',JSON.stringify(stored));
+  showFlashList();
+}
+function deleteFlash(i){
+  if(!confirm('Supprimer ce jeu ?')) return;
+  currentFlashList.splice(i,1);
+  const stored=JSON.parse(localStorage.getItem('flashcards'))||{};
+  stored[currentFlashSubject]=currentFlashList; localStorage.setItem('flashcards',JSON.stringify(stored));
+  showFlashList();
+}
+
+function startFlash(i){
+  initialDeck = currentFlashList[i].flashcards.map(x=>({...x})); // copie source
+  currentFlash = shuffle(initialDeck.map(x=>({...x})));          // mélange l’ordre
+  currentFlashIndex = 0; correctCount = 0; wrongIndices = [];
+  document.getElementById('flashPlayTitle').innerText = currentFlashList[i].title;
+  document.getElementById('flashEndActions').style.display='none';
+  document.getElementById('retryWrongBtn').disabled = true;
+  showSection('flashPlaySection');
+  renderFlashCard();
+  updateFlashProgress();
+}
+function quitFlash(){ showFlashList(); }
+function updateFlashProgress(){
+  const total=currentFlash.length;
+  const idx=Math.min(currentFlashIndex+1,total);
+  document.getElementById('flashProgress').innerText = total>0 ? `Carte ${idx} / ${total}` : '';
+}
+function finishFlashRound(){
+  const total = initialDeck.length;
+  const wrongCount = wrongIndices.length;
+  const scoreText = `Score : ${correctCount} / ${total}`;
+  const container = document.getElementById('flashCard');
+  container.textContent = scoreText;
+  container.style.opacity = '1';
+  container.style.transform = 'none';
+  document.getElementById('flashEndActions').style.display='flex';
+  document.getElementById('retryWrongBtn').disabled = (wrongCount===0);
+  document.getElementById('flashProgress').innerText = wrongCount>0
+    ? `${scoreText} • ${wrongCount} à revoir`
+    : `${scoreText} • Parfait ! 🎉`;
+}
+function restartAll(){
+  currentFlash = shuffle(initialDeck.map(x=>({...x})));
+  currentFlashIndex = 0; correctCount = 0; wrongIndices = [];
+  document.getElementById('flashEndActions').style.display='none';
+  renderFlashCard(); updateFlashProgress();
+}
+function restartWrong(){
+  if(wrongIndices.length===0) return;
+  currentFlash = shuffle(wrongIndices.map(idx => ({...initialDeck[idx]})));
+  initialDeck = currentFlash.map(x=>({...x})); // nouveau tour = ces cartes-là
+  currentFlashIndex = 0; correctCount = 0; wrongIndices = [];
+  document.getElementById('flashEndActions').style.display='none';
+  renderFlashCard(); updateFlashProgress();
+}
+
+function renderFlashCard(){
+  const goodBadge = document.getElementById('badgeGood');
+  const badBadge  = document.getElementById('badgeBad');
+
+  const oldEl = document.getElementById('flashCard');
+  const cardEl = oldEl.cloneNode(false); // clean listeners
+  oldEl.parentNode.replaceChild(cardEl, oldEl);
+  cardEl.id = 'flashCard';
+  cardEl.className = 'flashcard';
+
+  if(currentFlashIndex >= currentFlash.length || currentFlash.length===0){
+    finishFlashRound(); return;
+  }
+
+  let showingAnswer = false;
+  const card = currentFlash[currentFlashIndex];
+  cardEl.textContent = card.q;
+  cardEl.style.opacity = '1';
+  cardEl.style.transform = 'none';
+  goodBadge.style.opacity = '0';
+  badBadge.style.opacity  = '0';
+
+  // Tap pour retourner question/réponse
+  cardEl.onclick = () => {
+    showingAnswer = !showingAnswer;
+    cardEl.textContent = showingAnswer ? card.a : card.q;
+  };
+
+  // SWIPE
+  let startX = 0, currentX = 0, dragging = false;
+  const threshold = 60; // px
+
+  function onStart(e){
+    dragging = true;
+    cardEl.classList.add('dragging');
+    startX = (e.touches ? e.touches[0].clientX : e.clientX);
+  }
+  function onMove(e){
+    if(!dragging) return;
+    currentX = (e.touches ? e.touches[0].clientX : e.clientX);
+    const dx = currentX - startX;
+    cardEl.style.transform = `translateX(${dx}px) rotate(${dx/20}deg)`;
+    const abs = Math.abs(dx);
+    const p = Math.min(abs/100, 1);
+    if(dx>0){ // droite = bon
+      goodBadge.style.opacity = p.toString();
+      badBadge.style.opacity  = '0';
+    } else {
+      badBadge.style.opacity  = p.toString();
+      goodBadge.style.opacity = '0';
+    }
+  }
+  function onEnd(){
+    if(!dragging) return;
+    dragging = false;
+    cardEl.classList.remove('dragging');
+    const finalDx = (currentX - startX);
+    goodBadge.style.opacity = '0';
+    badBadge.style.opacity  = '0';
+
+    if(Math.abs(finalDx) > threshold){
+      const isRight = finalDx > 0;
+      if(isRight){ correctCount++; } else { wrongIndices.push( findAbsoluteIndex(card) ); }
+      cardEl.style.transition = 'transform .18s ease, opacity .18s ease';
+      cardEl.style.transform = `translateX(${isRight? 220 : -220}px) rotate(${finalDx/12}deg)`;
+      cardEl.style.opacity = '0';
+      setTimeout(()=>{
+        currentFlashIndex++;
+        cardEl.style.transition = '';
+        renderFlashCard();
+        updateFlashProgress();
+      },180);
+    } else {
+      cardEl.style.transform = 'translateX(0) rotate(0deg)';
+    }
+  }
+
+  function findAbsoluteIndex(c){
+    for(let idx=0; idx<initialDeck.length; idx++){
+      if(initialDeck[idx].q===c.q && initialDeck[idx].a===c.a){ return idx; }
+    }
+    return -1;
+  }
+
+  cardEl.addEventListener('touchstart', onStart, {passive:true});
+  cardEl.addEventListener('touchmove',  onMove,  {passive:true});
+  cardEl.addEventListener('touchend',   onEnd,   {passive:true});
+  cardEl.addEventListener('mousedown',  onStart);
+  window.addEventListener('mousemove',  onMove);
+  window.addEventListener('mouseup',    onEnd);
+}
+
+/* ========= Tâches ========= */
+const taskListEl=document.getElementById('taskList');
+let tasks=JSON.parse(localStorage.getItem('tasks'))||[];
+function displayTasks(){
+  taskListEl.innerHTML='';
+  tasks.forEach((t,i)=>{
+    const li=document.createElement('li'); li.innerText=t;
+    li.onclick=()=>{ if(confirm('Supprimer cette tâche ?')){ tasks.splice(i,1); localStorage.setItem('tasks',JSON.stringify(tasks)); displayTasks(); } };
+    taskListEl.appendChild(li);
+  });
+}
+function addTask(){
+  const val=document.getElementById('taskInput').value.trim();
+  if(val){ tasks.push(val); localStorage.setItem('tasks',JSON.stringify(tasks)); document.getElementById('taskInput').value=''; displayTasks(); }
+}
+displayTasks();
+
+/* ========= Pomodoro ========= */
 let pomodoroTimer,work=false;
-function startPomodoro(){let workMin=parseInt(document.getElementById('workTime').value),breakMin=parseInt(document.getElementById('breakTime').value); let time=(workMin*60); work=true; clearInterval(pomodoroTimer); pomodoroTimer=setInterval(()=>{if(time<=0){work=!work; time=(work?workMin*60:breakMin*60);} const m=Math.floor(time/60), s=time%60; document.getElementById('timerDisplay').innerText=(work?'Travail':'Pause')+` ${m}:${s<10?'0'+s:s}`; time--;},1000);}
+function startPomodoro(){
+  const workMin=parseInt(document.getElementById('workTime').value)||25;
+  const breakMin=parseInt(document.getElementById('breakTime').value)||5;
+  let time=workMin*60; work=true;
+  clearInterval(pomodoroTimer);
+  pomodoroTimer=setInterval(()=>{
+    if(time<=0){ work=!work; time=(work?workMin*60:breakMin*60); }
+    const m=Math.floor(time/60), s=time%60;
+    document.getElementById('timerDisplay').innerText=(work?'Travail':'Pause')+` ${m}:${s<10?'0'+s:s}`;
+    time--;
+  },1000);
+}
+
+/* ========= INIT ========= */
+const flashSubjectsDiv=document.getElementById('flashSubjects');
+subjects.forEach(sub=>{
+  const btn=document.createElement('button'); btn.innerText=sub; btn.className='action-btn';
+  btn.onclick=()=>{currentFlashSubject=sub;showFlashList();};
+  flashSubjectsDiv.appendChild(btn);
+});
+showSection('quizHome');
 </script>
 </body>
 </html>
