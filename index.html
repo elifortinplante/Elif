@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -21,7 +23,6 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Fond d'écran identique à l'ancienne version
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
@@ -35,29 +36,25 @@ class HomeScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ElevatedButton(
-                child: Text('Quiz'),
-                onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => SubjectScreen(isQuiz: true))),
-              ),
+                  child: Text('Quiz'),
+                  onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => SubjectScreen(isQuiz: true)))),
               ElevatedButton(
-                child: Text('Flashcards'),
-                onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => SubjectScreen(isQuiz: false))),
-              ),
+                  child: Text('Flashcards'),
+                  onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => SubjectScreen(isQuiz: false)))),
               ElevatedButton(
-                child: Text('Pomodoro'),
-                onPressed: () => Navigator.push(
-                    context, MaterialPageRoute(builder: (_) => PomodoroScreen())),
-              ),
+                  child: Text('Pomodoro'),
+                  onPressed: () =>
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => PomodoroScreen()))),
               ElevatedButton(
-                child: Text('Tâches'),
-                onPressed: () => Navigator.push(
-                    context, MaterialPageRoute(builder: (_) => TasksScreen())),
-              ),
+                  child: Text('Tâches'),
+                  onPressed: () =>
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => TasksScreen()))),
             ],
           ),
         ),
@@ -90,7 +87,7 @@ class SubjectScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                       builder: (_) =>
-                          CardScreen(subject: subjects[index], isQuiz: isQuiz)));
+                          EnsembleListScreen(subject: subjects[index], isQuiz: isQuiz)));
             },
           );
         },
@@ -100,73 +97,68 @@ class SubjectScreen extends StatelessWidget {
 }
 
 // ----------------------
-// Écran des cartes / quiz avec swipe et sauvegarde
+// Liste des ensembles par matière
 // ----------------------
-class CardScreen extends StatefulWidget {
+class EnsembleListScreen extends StatefulWidget {
   final String subject;
   final bool isQuiz;
-  CardScreen({required this.subject, required this.isQuiz});
+  EnsembleListScreen({required this.subject, required this.isQuiz});
 
   @override
-  _CardScreenState createState() => _CardScreenState();
+  _EnsembleListScreenState createState() => _EnsembleListScreenState();
 }
 
-class _CardScreenState extends State<CardScreen> {
-  List<String> cards = [];
-  Set<int> doneCards = {}; // cartes marquées bon
-  int currentIndex = 0;
+class _EnsembleListScreenState extends State<EnsembleListScreen> {
+  List<String> ensembles = [];
 
   @override
   void initState() {
     super.initState();
-    cards = List.generate(10, (i) => '${widget.subject} Question ${i + 1}');
-    loadProgress();
+    loadEnsembles();
   }
 
-  void loadProgress() async {
+  void loadEnsembles() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      doneCards = (prefs.getStringList('${widget.subject}_done') ?? [])
-          .map((e) => int.parse(e))
-          .toSet();
+      ensembles = prefs.getStringList('${widget.subject}_${widget.isQuiz ? "quiz" : "flash"}') ?? [];
     });
   }
 
-  void saveProgress() async {
+  void saveEnsembles() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setStringList('${widget.subject}_done',
-        doneCards.map((e) => e.toString()).toList());
+    prefs.setStringList('${widget.subject}_${widget.isQuiz ? "quiz" : "flash"}', ensembles);
   }
 
-  void swipeRight() {
-    doneCards.add(currentIndex);
-    saveProgress();
-    nextCard();
+  void addEnsemble(String title) {
+    if (title.trim().isEmpty) return;
+    setState(() => ensembles.add(title));
+    saveEnsembles();
+    saveEmptyCards(title);
   }
 
-  void swipeLeft() {
-    nextCard();
+  void saveEmptyCards(String ensemble) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setStringList('${widget.subject}_$ensemble', []);
   }
 
-  void nextCard() {
-    if (currentIndex < cards.length - 1) {
-      setState(() {
-        currentIndex++;
-      });
-    } else {
-      showDialog(
+  void removeEnsemble(int index) async {
+    bool? confirm = await showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          title: Text('Terminé !'),
-          content: Text('Vous avez terminé toutes les cartes de ${widget.subject}.'),
-          actions: [
-            TextButton(
-              child: Text('OK'),
-              onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
-            ),
-          ],
-        ),
-      );
+              title: Text('Supprimer cet ensemble ?'),
+              content: Text('Êtes-vous sûr de vouloir le supprimer ?'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Non')),
+                TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Oui')),
+              ],
+            ));
+    if (confirm ?? false) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.remove('${widget.subject}_${ensembles[index]}'); // supprime contenu
+      setState(() {
+        ensembles.removeAt(index);
+        saveEnsembles();
+      });
     }
   }
 
@@ -174,33 +166,267 @@ class _CardScreenState extends State<CardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: Text('${widget.subject} - ${widget.isQuiz ? 'Quiz' : 'Flashcards'}')),
-      body: Center(
-        child: GestureDetector(
-          onPanEnd: (details) {
-            if (details.velocity.pixelsPerSecond.dx > 0) {
-              swipeRight();
-            } else {
-              swipeLeft();
-            }
-          },
-          child: Card(
-            margin: EdgeInsets.all(20),
-            color: doneCards.contains(currentIndex) ? Colors.green[100] : Colors.white,
-            child: Container(
-              height: 300,
-              alignment: Alignment.center,
-              child: Text(cards[currentIndex], style: TextStyle(fontSize: 24)),
+        title: Text('${widget.subject} - ${widget.isQuiz ? "Quiz" : "Flashcards"}'),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.all(8),
+            child: ElevatedButton(
+                child: Text('Créer un nouveau'),
+                onPressed: () async {
+                  TextEditingController ctrl = TextEditingController();
+                  await showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                            title: Text('Titre de l’ensemble'),
+                            content: TextField(controller: ctrl),
+                            actions: [
+                              TextButton(
+                                  onPressed: () => Navigator.pop(context), child: Text('Annuler')),
+                              TextButton(
+                                  onPressed: () {
+                                    addEnsemble(ctrl.text);
+                                    Navigator.pop(context);
+                                  },
+                                  child: Text('Créer')),
+                            ],
+                          ));
+                }),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: ensembles.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(ensembles[index]),
+                  trailing: IconButton(
+                      icon: Icon(Icons.delete),
+                      onPressed: () => removeEnsemble(index)),
+                  onTap: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => CardPlayScreen(
+                                  subject: widget.subject,
+                                  ensemble: ensembles[index],
+                                  isQuiz: widget.isQuiz,
+                                )));
+                  },
+                );
+              },
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
 // ----------------------
-// Pomodoro avec sauvegarde simple
+// CardPlayScreen (Flashcards & Quiz)
+// ----------------------
+class CardPlayScreen extends StatefulWidget {
+  final String subject;
+  final String ensemble;
+  final bool isQuiz;
+  CardPlayScreen({required this.subject, required this.ensemble, required this.isQuiz});
+
+  @override
+  _CardPlayScreenState createState() => _CardPlayScreenState();
+}
+
+class _CardPlayScreenState extends State<CardPlayScreen> {
+  List<Map<String, dynamic>> cards = [];
+  int currentIndex = 0;
+  Map<int, bool> results = {};
+  bool finished = false;
+
+  @override
+  void initState() {
+    super.initState();
+    loadCards();
+  }
+
+  void loadCards() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String>? raw = prefs.getStringList('${widget.subject}_${widget.ensemble}');
+    if (raw != null) {
+      setState(() {
+        cards = raw.map((e) => Map<String, dynamic>.from(jsonDecode(e))).toList();
+      });
+    }
+  }
+
+  void saveCards() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setStringList('${widget.subject}_${widget.ensemble}',
+        cards.map((e) => jsonEncode(e)).toList());
+  }
+
+  void markCard(bool correct) {
+    results[currentIndex] = correct;
+    nextCard();
+  }
+
+  void nextCard() {
+    if (currentIndex < cards.length - 1) {
+      setState(() => currentIndex++);
+    } else {
+      setState(() => finished = true);
+    }
+  }
+
+  void restartErrors() {
+    List<Map<String, dynamic>> newCards = [];
+    for (var entry in results.entries) {
+      if (!entry.value) newCards.add(cards[entry.key]);
+    }
+    setState(() {
+      cards = newCards..shuffle();
+      results = {};
+      currentIndex = 0;
+      finished = false;
+    });
+  }
+
+  void restartAll() {
+    setState(() {
+      cards.shuffle();
+      results = {};
+      currentIndex = 0;
+      finished = false;
+    });
+  }
+
+  void addCard() async {
+    TextEditingController questionCtrl = TextEditingController();
+    List<TextEditingController> choiceCtrls =
+        List.generate(4, (_) => TextEditingController());
+    int correctIndex = 0;
+    await showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+              title: Text(widget.isQuiz ? 'Nouvelle question' : 'Nouvelle carte'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextField(controller: questionCtrl, decoration: InputDecoration(labelText: 'Question / Carte')),
+                    if (widget.isQuiz)
+                      ...List.generate(4, (i) => TextField(controller: choiceCtrls[i], decoration: InputDecoration(labelText: 'Choix ${i+1}'))),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: Text('Annuler')),
+                TextButton(
+                    onPressed: () {
+                      Map<String, dynamic> card = {'question': questionCtrl.text};
+                      if (widget.isQuiz) {
+                        List<String> choix = [];
+                        for (var c in choiceCtrls) if (c.text.trim().isNotEmpty) choix.add(c.text.trim());
+                        card['choix'] = choix;
+                        card['bonneReponse'] = choix.isNotEmpty ? choix[0] : '';
+                      }
+                      setState(() {
+                        cards.add(card);
+                        saveCards();
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: Text('Ajouter')),
+              ],
+            ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (cards.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.ensemble),
+          actions: [IconButton(icon: Icon(Icons.add), onPressed: addCard)],
+        ),
+        body: Center(child: Text('Aucune carte ou question')),
+      );
+    }
+
+    if (finished) {
+      int score = results.values.where((v) => v).length;
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.ensemble),
+          actions: [IconButton(icon: Icon(Icons.add), onPressed: addCard)],
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Score : $score / ${cards.length}', style: TextStyle(fontSize: 24)),
+              SizedBox(height: 20),
+              ElevatedButton(onPressed: restartErrors, child: Text('Recommencer les erreurs')),
+              ElevatedButton(onPressed: restartAll, child: Text('Tout recommencer')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    var card = cards[currentIndex];
+
+    if (widget.isQuiz) {
+      List<String> choices = List<String>.from(card['choix'] ?? []);
+      choices.shuffle(Random());
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.ensemble),
+          actions: [IconButton(icon: Icon(Icons.add), onPressed: addCard)],
+        ),
+        body: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Text(card['question'], style: TextStyle(fontSize: 24)),
+              SizedBox(height: 20),
+              ...choices.map((c) => ElevatedButton(
+                  onPressed: () => markCard(c == card['bonneReponse']), child: Text(c))),
+            ],
+          ),
+        ),
+      );
+    } else {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.ensemble),
+          actions: [IconButton(icon: Icon(Icons.add), onPressed: addCard)],
+        ),
+        body: GestureDetector(
+          onPanEnd: (details) {
+            if (details.velocity.pixelsPerSecond.dx > 0) {
+              markCard(true);
+            } else {
+              markCard(false);
+            }
+          },
+          child: Center(
+            child: Card(
+              margin: EdgeInsets.all(20),
+              color: results[currentIndex] == true ? Colors.green[100] : Colors.white,
+              child: Container(
+                height: 300,
+                alignment: Alignment.center,
+                child: Text(card['question'], style: TextStyle(fontSize: 24)),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+  }
+}
+
+// ----------------------
+// Pomodoro
 // ----------------------
 class PomodoroScreen extends StatefulWidget {
   @override
@@ -210,77 +436,34 @@ class PomodoroScreen extends StatefulWidget {
 class _PomodoroScreenState extends State<PomodoroScreen> {
   int minutes = 25;
   int seconds = 0;
-  bool isRunning = false;
-  late final Ticker _ticker;
+  bool running = false;
 
-  @override
-  void initState() {
-    super.initState();
-    loadPomodoro();
-    _ticker = Ticker((_) {
-      if (isRunning) {
-        setState(() {
-          if (seconds == 0) {
-            if (minutes == 0) {
-              isRunning = false;
-            } else {
-              minutes--;
-              seconds = 59;
-            }
-          } else {
-            seconds--;
-          }
-        });
-        savePomodoro();
-      }
-    });
-    _ticker.start();
+  void toggleTimer() {
+    setState(() => running = !running);
   }
 
-  void loadPomodoro() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+  void resetTimer() {
     setState(() {
-      minutes = prefs.getInt('pomodoro_minutes') ?? 25;
-      seconds = prefs.getInt('pomodoro_seconds') ?? 0;
-      isRunning = prefs.getBool('pomodoro_running') ?? false;
+      minutes = 25;
+      seconds = 0;
+      running = false;
     });
   }
-
-  void savePomodoro() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setInt('pomodoro_minutes', minutes);
-    prefs.setInt('pomodoro_seconds', seconds);
-    prefs.setBool('pomodoro_running', isRunning);
-  }
-
-  @override
-  void dispose() {
-    _ticker.stop();
-    super.dispose();
-  }
-
-  void startPause() => setState(() => isRunning = !isRunning);
-
-  void reset() => setState(() {
-        minutes = 25;
-        seconds = 0;
-        isRunning = false;
-        savePomodoro();
-      });
 
   @override
   Widget build(BuildContext context) {
+    String minStr = minutes.toString().padLeft(2, '0');
+    String secStr = seconds.toString().padLeft(2, '0');
     return Scaffold(
       appBar: AppBar(title: Text('Pomodoro')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
-                style: TextStyle(fontSize: 60)),
+            Text('$minStr:$secStr', style: TextStyle(fontSize: 48)),
             SizedBox(height: 20),
-            ElevatedButton(onPressed: startPause, child: Text(isRunning ? 'Pause' : 'Démarrer')),
-            ElevatedButton(onPressed: reset, child: Text('Réinitialiser')),
+            ElevatedButton(onPressed: toggleTimer, child: Text(running ? 'Pause' : 'Démarrer')),
+            ElevatedButton(onPressed: resetTimer, child: Text('Réinitialiser')),
           ],
         ),
       ),
@@ -289,7 +472,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
 }
 
 // ----------------------
-// Tâches avec sauvegarde
+// Tâches
 // ----------------------
 class TasksScreen extends StatefulWidget {
   @override
@@ -298,7 +481,7 @@ class TasksScreen extends StatefulWidget {
 
 class _TasksScreenState extends State<TasksScreen> {
   List<String> tasks = [];
-  TextEditingController controller = TextEditingController();
+  TextEditingController ctrl = TextEditingController();
 
   @override
   void initState() {
@@ -318,11 +501,10 @@ class _TasksScreenState extends State<TasksScreen> {
     prefs.setStringList('tasks', tasks);
   }
 
-  void addTask(String task) {
-    if (task.trim().isEmpty) return;
-    setState(() => tasks.add(task));
+  void addTask(String t) {
+    if (t.trim().isEmpty) return;
+    setState(() => tasks.add(t));
     saveTasks();
-    controller.clear();
   }
 
   void removeTask(int index) {
@@ -340,52 +522,28 @@ class _TasksScreenState extends State<TasksScreen> {
             padding: EdgeInsets.all(8),
             child: Row(
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    decoration: InputDecoration(labelText: 'Nouvelle tâche'),
-                  ),
-                ),
-                IconButton(icon: Icon(Icons.add), onPressed: () => addTask(controller.text))
+                Expanded(child: TextField(controller: ctrl)),
+                ElevatedButton(
+                    onPressed: () {
+                      addTask(ctrl.text);
+                      ctrl.clear();
+                    },
+                    child: Text('Ajouter'))
               ],
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: tasks.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(tasks[index]),
-                  trailing: IconButton(
-                      icon: Icon(Icons.delete), onPressed: () => removeTask(index)),
-                );
-              },
+              child: ListView.builder(
+            itemCount: tasks.length,
+            itemBuilder: (context, index) => ListTile(
+              title: Text(tasks[index]),
+              trailing: IconButton(
+                  icon: Icon(Icons.delete),
+                  onPressed: () => removeTask(index)),
             ),
-          ),
+          ))
         ],
       ),
     );
   }
-}
-
-// ----------------------
-// Ticker pour Pomodoro
-// ----------------------
-class Ticker {
-  final void Function(Duration) onTick;
-  bool _running = false;
-
-  Ticker(this.onTick) {
-    _tick();
-  }
-
-  void _tick() async {
-    while (true) {
-      await Future.delayed(Duration(seconds: 1));
-      if (_running) onTick(Duration(seconds: 1));
-    }
-  }
-
-  void start() => _running = true;
-  void stop() => _running = false;
 }
